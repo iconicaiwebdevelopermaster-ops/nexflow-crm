@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  REPLIED
+  WON
+  LOST
+}
+
+enum EmailStatus {
+  SENT
+  FAILED
+  BOUNCED
+}
+
+enum ActivityType {
+  EMAIL_SENT
+  STATUS_CHANGED
+  NOTE_ADDED
+}
+
+model User {
+  id            String       @id @default(uuid())
+  name          String?
+  email         String       @unique
+  password      String
+  smtpHost      String?      @map("smtp_host")
+  smtpPort      Int?         @map("smtp_port")
+  smtpUser      String?      @map("smtp_user")
+  smtpPass      String?      @map("smtp_pass")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  leads         Lead[]
+  templates     Template[]
+  emailsSent    EmailSent[]
+  tasks         Task[]
+
+  @@map("users")
+}
+
+model Lead {
+  id          String       @id @default(uuid())
+  name        String
+  email       String
+  phone       String?
+  company     String?
+  website     String?
+  status      LeadStatus   @default(NEW)
+  source      String?      @default("Manual")
+  notes       String?      @db.Text
+  userId      String       @map("user_id")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailsSent  EmailSent[]
+  tasks       Task[]
+  activities  Activity[]
+
+  @@map("leads")
+}
+
+model Template {
+  id          String       @id @default(uuid())
+  name        String
+  category    String       @default("Cold Outreach")
+  subject     String
+  body        String       @db.Text
+  userId      String?      @map("user_id")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  user        User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailsSent  EmailSent[]
+
+  @@map("templates")
+}
+
+model EmailSent {
+  id          String       @id @default(uuid())
+  leadId      String       @map("lead_id")
+  templateId  String?      @map("template_id")
+  userId      String       @map("user_id")
+  subject     String
+  body        String       @db.Text
+  status      EmailStatus  @default(SENT)
+  sentAt      DateTime     @default(now()) @map("sent_at")
+
+  lead        Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  template    Template?    @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("emails_sent")
+}
+
+model Task {
+  id          String       @id @default(uuid())
+  title       String
+  completed   Boolean      @default(false)
+  leadId      String?      @map("lead_id")
+  dueDate     DateTime?    @map("due_date")
+  userId      String       @map("user_id")
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lead        Lead?        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@map("tasks")
+}
+
+model Activity {
+  id          String       @id @default(uuid())
+  leadId      String       @map("lead_id")
+  type        ActivityType
+  description String
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  lead        Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@map("activities")
+}
