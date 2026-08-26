@@ -8,7 +8,7 @@ export async function loginAction(email: string, password: string) {
     await signIn("credentials", {
       email: email.toLowerCase().trim(),
       password: password,
-      redirectTo: "/dashboard",
+      redirect: false,
     });
     return { success: true, error: null };
   } catch (error) {
@@ -20,7 +20,6 @@ export async function loginAction(email: string, password: string) {
           return { success: false, error: "Authentication failed. Please try again." };
       }
     }
-    // Re-throw Next.js redirect exception so server redirect happens
-    throw error;
+    return { success: false, error: "An unexpected error occurred." };
   }
 }

@@ -32,15 +32,14 @@ export function LoginForm() {
 
     try {
       const res = await loginAction(data.email, data.password);
-      if (res && !res.success) {
-        setError(res.error || "Invalid email or password");
+      if (res && res.success) {
+        // Direct relative redirect ensures it stays on Vercel domain!
+        window.location.href = "/dashboard";
+      } else {
+        setError(res?.error || "Invalid email or password");
         setIsLoading(false);
       }
     } catch (err: any) {
-      // Server Action redirecting to /dashboard will throw NEXT_REDIRECT which is expected
-      if (err?.message?.includes("NEXT_REDIRECT")) {
-        return;
-      }
       setError("Failed to sign in. Check your network connection.");
       setIsLoading(false);
     }

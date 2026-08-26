@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signupSchema } from "@/lib/validations";
 import { loginAction } from "@/app/actions/authActions";
-import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +15,6 @@ import Link from "next/link";
 type SignupFormValues = z.infer<typeof signupSchema>;
 
 export function SignupForm() {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -47,12 +45,13 @@ export function SignupForm() {
         return;
       }
 
-      // Auto login with Server Action
-      await loginAction(data.email, data.password);
-    } catch (err: any) {
-      if (err?.message?.includes("NEXT_REDIRECT")) {
-        return;
+      const loginRes = await loginAction(data.email, data.password);
+      if (loginRes && loginRes.success) {
+        window.location.href = "/dashboard";
+      } else {
+        window.location.href = "/login";
       }
+    } catch (err: any) {
       setError("An unexpected error occurred. Please try again.");
       setIsLoading(false);
     }
@@ -109,7 +108,7 @@ export function SignupForm() {
 
       <p className="text-center text-xs text-slate-400 mt-4">
         Already have an account?{" "}
-        <Link href="/login" className="text-blue-400 hover:underline font-medium">
+        <Link href="/signup" className="text-blue-400 hover:underline font-medium">
           Sign In
         </Link>
       </p>
