@@ -14,24 +14,30 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       authorize: async (credentials) => {
-        const validated = loginSchema.safeParse(credentials);
-        if (!validated.success) return null;
+        try {
+          const validated = loginSchema.safeParse(credentials);
+          if (!validated.success) return null;
 
-        const { email, password } = validated.data;
-        const user = await prisma.user.findUnique({
-          where: { email: email.toLowerCase() },
-        });
+          const { email, password } = validated.data;
+          
+          const user = await prisma.user.findUnique({
+            where: { email: email.toLowerCase() },
+          });
 
-        if (!user || !user.password) return null;
+          if (!user || !user.password) return null;
 
-        const isValid = await bcrypt.compare(password, user.password);
-        if (!isValid) return null;
+          const isValid = await bcrypt.compare(password, user.password);
+          if (!isValid) return null;
 
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-        };
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+          };
+        } catch (error) {
+          console.error("Auth Error:", error);
+          return null;
+        }
       },
     }),
   ],
