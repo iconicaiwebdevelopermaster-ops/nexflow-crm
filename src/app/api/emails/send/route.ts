@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { sendOutreachEmail } from "@/lib/email";
 import { EmailStatus } from "@prisma/client";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: Request) {
   try {
     const session = await auth();
