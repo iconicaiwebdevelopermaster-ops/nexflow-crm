@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     }
 
     const { name, email, password } = result.data;
-    const normalizedEmail = email.toLowerCase();
+    const normalizedEmail = email.toLowerCase().trim();
 
     const existingUser = await prisma.user.findUnique({
       where: { email: normalizedEmail },
@@ -41,7 +41,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12);
+    // 10 rounds is fast and secure for serverless execution
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
       data: {
@@ -72,7 +73,7 @@ export async function POST(req: Request) {
       {
         success: false,
         data: null,
-        error: error.message || "Internal server error",
+        error: error.message || "Database connection error",
         message: "Failed to create account",
       },
       { status: 500 }
