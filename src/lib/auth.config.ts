@@ -1,5 +1,9 @@
 import type { NextAuthConfig } from "next-auth";
 
+if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+  delete process.env.NEXTAUTH_URL;
+}
+
 export const authConfig = {
   trustHost: true,
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "nexflow-super-secret-key-change-in-production-2026",

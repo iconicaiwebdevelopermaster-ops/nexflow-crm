@@ -5,6 +5,10 @@ import bcrypt from "bcryptjs";
 import { loginSchema } from "@/lib/validations";
 import { authConfig } from "@/lib/auth.config";
 
+if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+  delete process.env.NEXTAUTH_URL;
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   providers: [

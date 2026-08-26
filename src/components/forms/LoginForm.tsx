@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema } from "@/lib/validations";
-import { loginAction } from "@/app/actions/authActions";
+import { signIn } from "next-auth/react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,16 +31,20 @@ export function LoginForm() {
     setError(null);
 
     try {
-      const res = await loginAction(data.email, data.password);
-      if (res && res.success) {
-        // Direct relative redirect ensures it stays on Vercel domain!
+      const res = await signIn("credentials", {
+        redirect: false,
+        email: data.email.trim(),
+        password: data.password,
+      });
+
+      if (res?.ok && !res?.error) {
         window.location.href = "/dashboard";
       } else {
-        setError(res?.error || "Invalid email or password");
+        setError("Invalid email or password");
         setIsLoading(false);
       }
     } catch (err: any) {
-      setError("Failed to sign in. Check your network connection.");
+      setError("An unexpected error occurred. Please try again.");
       setIsLoading(false);
     }
   };

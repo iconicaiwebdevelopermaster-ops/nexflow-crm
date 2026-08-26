@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signupSchema } from "@/lib/validations";
-import { loginAction } from "@/app/actions/authActions";
+import { signIn } from "next-auth/react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,8 +45,13 @@ export function SignupForm() {
         return;
       }
 
-      const loginRes = await loginAction(data.email, data.password);
-      if (loginRes && loginRes.success) {
+      const loginRes = await signIn("credentials", {
+        redirect: false,
+        email: data.email.trim(),
+        password: data.password,
+      });
+
+      if (loginRes?.ok && !loginRes?.error) {
         window.location.href = "/dashboard";
       } else {
         window.location.href = "/login";
