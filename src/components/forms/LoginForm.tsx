@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema } from "@/lib/validations";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +15,6 @@ import Link from "next/link";
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -35,7 +33,7 @@ export function LoginForm() {
     try {
       const res = await signIn("credentials", {
         redirect: false,
-        email: data.email,
+        email: data.email.trim(),
         password: data.password,
       });
 
@@ -43,8 +41,8 @@ export function LoginForm() {
         setError("Invalid email or password");
         setIsLoading(false);
       } else {
-        router.push("/dashboard");
-        router.refresh();
+        // Instant hard navigation ensures session cookie is sent to Vercel middleware immediately
+        window.location.href = "/dashboard";
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");

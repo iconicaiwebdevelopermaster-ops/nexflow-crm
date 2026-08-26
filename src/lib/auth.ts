@@ -19,9 +19,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (!validated.success) return null;
 
           const { email, password } = validated.data;
-          
+          const normalizedEmail = email.toLowerCase().trim();
+
           const user = await prisma.user.findUnique({
-            where: { email: email.toLowerCase() },
+            where: { email: normalizedEmail },
           });
 
           if (!user || !user.password) return null;
@@ -35,7 +36,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             email: user.email,
           };
         } catch (error) {
-          console.error("Auth Error:", error);
+          console.error("Auth Authorize Error:", error);
           return null;
         }
       },
