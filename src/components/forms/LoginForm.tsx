@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema } from "@/lib/validations";
-import { signIn } from "next-auth/react";
+import { loginAction } from "@/app/actions/authActions";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,21 +31,17 @@ export function LoginForm() {
     setError(null);
 
     try {
-      const res = await signIn("credentials", {
-        redirect: false,
-        email: data.email.trim(),
-        password: data.password,
-      });
-
-      if (res?.error) {
-        setError("Invalid email or password");
+      const res = await loginAction(data.email, data.password);
+      if (res && !res.success) {
+        setError(res.error || "Invalid email or password");
         setIsLoading(false);
-      } else {
-        // Instant hard navigation ensures session cookie is sent to Vercel middleware immediately
-        window.location.href = "/dashboard";
       }
-    } catch (err) {
-      setError("An unexpected error occurred. Please try again.");
+    } catch (err: any) {
+      // Server Action redirecting to /dashboard will throw NEXT_REDIRECT which is expected
+      if (err?.message?.includes("NEXT_REDIRECT")) {
+        return;
+      }
+      setError("Failed to sign in. Check your network connection.");
       setIsLoading(false);
     }
   };

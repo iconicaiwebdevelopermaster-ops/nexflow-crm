@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signupSchema } from "@/lib/validations";
-import { signIn } from "next-auth/react";
+import { loginAction } from "@/app/actions/authActions";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -47,19 +47,12 @@ export function SignupForm() {
         return;
       }
 
-      const loginRes = await signIn("credentials", {
-        redirect: false,
-        email: data.email,
-        password: data.password,
-      });
-
-      if (loginRes?.error) {
-        router.push("/login");
-      } else {
-        router.push("/dashboard");
-        router.refresh();
+      // Auto login with Server Action
+      await loginAction(data.email, data.password);
+    } catch (err: any) {
+      if (err?.message?.includes("NEXT_REDIRECT")) {
+        return;
       }
-    } catch (err) {
       setError("An unexpected error occurred. Please try again.");
       setIsLoading(false);
     }
