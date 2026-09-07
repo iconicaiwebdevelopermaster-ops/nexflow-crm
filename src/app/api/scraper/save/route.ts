@@ -1,88 +1,95 @@
-// src/app/api/scraper/save/route.ts
-
-import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getToken } from "next-auth/jwt";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    const token = await getToken({ 
-      req, 
-      secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "nexflow-secret-key-12345" 
-    });
-
-    let userId = token?.id || token?.sub || (token?.user as any)?.id;
-
-    if (!userId) {
-      const firstUser = await db.users.findFirst();
-      if (firstUser) {
-        userId = firstUser.id;
-      } else {
-        return NextResponse.json({ error: "No user account found to associate leads." }, { status: 400 });
-      }
-    }
-
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET });
     const body = await req.json();
-    const leadsToSave = Array.isArray(body) ? body : [body];
+    const { leads } = body;
 
-    if (leadsToSave.length === 0) {
-      return NextResponse.json({ error: "No lead payload provided!" }, { status: 400 });
+    if (!leads || !Array.isArray(leads) || leads.length === 0) {
+      return NextResponse.json(
+        { error: "No leads provided to save" },
+        { status: 400 }
+      );
     }
 
-    const savedCount = [];
-    const skippedCount = [];
+    let savedCount = 0;
+    const errors: string[] = [];
 
-    for (const item of leadsToSave) {
-      const emailAddress = item.emails && item.emails.length > 0 
-        ? item.emails[0] 
-        : `contact@${(item.website || "example.com").replace(/https?:\/\/(www\.)?/, "").replace(/\/$/, "")}`;
+    for (const lead of leads) {
+      try {
+        const email = lead.email?.trim() || "";
+        const company = lead.company || lead.businessName || lead.title || "Unknown Business";
+        const name = lead.name || lead.contactName || "Decision Maker";
+        const phone = lead.phone || "";
+        const website = lead.website || lead.url || "";
+        const city = lead.city || lead.location || "";
+        const niche = lead.niche || lead.category || lead.industry || "";
+        const source = lead.source || "SCRAPER";
 
-      const existingLead = await db.leads.findFirst({
-        where: {
-          email: emailAddress,
-          user_id: userId
+        if (!email && !company) continue;
+
+        // Upsert or Create lead
+        if (email) {
+          await db.lead.upsert({
+            where: { email },
+            update: {
+              company,
+              phone: phone || undefined,
+              website: website || undefined,
+              city: city || undefined,
+              niche: niche || undefined,
+            },
+            create: {
+              name,
+              email,
+              company,
+              phone,
+              website,
+              city,
+              niche,
+              source,
+              status: "NEW",
+              userId: token?.sub || null,
+            },
+          });
+        } else {
+          await db.lead.create({
+            data: {
+              name,
+              email: `no-email-${Date.now()}-${Math.random().toString(36).substring(7)}@nexflow.local`,
+              company,
+              phone,
+              website,
+              city,
+              niche,
+              source,
+              status: "NEW",
+              userId: token?.sub || null,
+            },
+          });
         }
-      });
-
-      if (existingLead) {
-        skippedCount.push(item.name);
-        continue;
+        savedCount++;
+      } catch (err: any) {
+        errors.push(err.message);
       }
-
-      const cleanLead = await db.leads.create({
-        data: {
-          name: item.name || "Unknown Company",
-          email: emailAddress,
-          phone: item.phone || "",
-          company: item.name || "N/A",
-          website: item.website || "",
-          status: "NEW",
-          source: item.source || "NexScraper Engine",
-          notes: `System Scraped Snippet: ${item.snippet || "No notes."} | Instagram: ${item.instagram || "N/A"} | LinkedIn: ${item.linkedin || "N/A"}`,
-          user_id: userId
-        }
-      });
-
-      await db.activities.create({
-        data: {
-          lead_id: cleanLead.id,
-          type: "NOTE_ADDED",
-          description: `Lead auto-scraped and imported successfully from NexScraper (${item.source})`
-        }
-      });
-
-      savedCount.push(cleanLead.name);
     }
 
     return NextResponse.json({
       success: true,
-      message: `Completed processing! Saved: ${savedCount.length}, Duplicates skipped: ${skippedCount.length}`,
-      saved: savedCount,
-      skipped: skippedCount
+      message: `Successfully saved ${savedCount} leads`,
+      savedCount,
+      errors: errors.length > 0 ? errors : undefined,
     });
-
   } catch (error: any) {
-    console.error("Scraper Save Controller Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to import scraped lead records." }, { status: 500 });
+    console.error("Error in /api/scraper/save:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to save scraped leads" },
+      { status: 500 }
+    );
   }
 }
