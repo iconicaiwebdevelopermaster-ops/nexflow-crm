@@ -1,0 +1,342 @@
+﻿"use client";
+
+import React, { useState, useEffect, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+
+      param($m)
+      $inside = $m.Groups[1].Value.Trim().TrimEnd(',')
+      if ($inside -notmatch '\bDownload\b') {
+        "import { $inside, Download } from `"lucide-react`""
+      } else {
+        $m.Value
+      }
+    ;
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/use-toast";
+import { KanbanBoard } from "@/components/leads/kanban-board";
+import { LeadItem } from "@/components/leads/kanban-card";
+
+function LeadsContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const initialView = searchParams.get("view") === "table" ? "table" : "kanban";
+
+  const [viewMode, setViewMode] = useState<"table" | "kanban">(initialView);
+  const [leads, setLeads] = useState<LeadItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  const handleExportCsv = () => {
+    window.location.href = "/api/leads/export";
+  };
+
+
+  const downloadLeadsCsv = () => {
+    const rows = Array.isArray(leads) ? leads : [];
+    if (!rows.length) {
+      toast({
+        title: "No leads",
+        description: "Nothing to export.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const headers = [
+      "Name",
+      "Email",
+      "Phone",
+      "Company",
+      "Website",
+      "Status",
+      "Source",
+      "Notes",
+      "Created At",
+    ];
+
+    const esc = (v: any) => {
+      const s = v === null || v === undefined ? "" : String(v);
+      if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+
+    const lines = [headers.join(",")];
+    for (const l of rows as any[]) {
+      lines.push(
+        [
+          esc(l.name),
+          esc(l.email),
+          esc(l.phone),
+          esc(l.company),
+          esc(l.website),
+          esc(l.status),
+          esc(l.source),
+          esc(l.notes),
+          esc(l.createdAt || l.created_at || ""),
+        ].join(",")
+      );
+    }
+
+    // BOM so Excel Urdu/Unicode safe rahe
+    const csv = "\uFEFF" + lines.join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const date = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `nexflow-leads-${date}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "CSV Exported",
+      description: `${rows.length} leads downloaded.`,
+    });
+  };
+
+
+  const fetchLeads = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/leads");
+      if (res.ok) {
+        const data = await res.json();
+        let list: LeadItem[] = [];
+        if (Array.isArray(data)) {
+          list = data;
+        } else if (data && Array.isArray(data.leads)) {
+          list = data.leads;
+        }
+        setLeads(list);
+      } else {
+        setLeads([]);
+      }
+    } catch (err) {
+      console.error("Error fetching leads:", err);
+      setLeads([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLeads();
+  }, []);
+
+  useEffect(() => {
+    const v = searchParams.get("view");
+    if (v === "kanban") setViewMode("kanban");
+    if (v === "table") setViewMode("table");
+  }, [searchParams]);
+
+  const switchView = (mode: "table" | "kanban") => {
+    setViewMode(mode);
+    router.replace(mode === "kanban" ? "/leads?view=kanban" : "/leads?view=table");
+  };
+
+  // Always safety check leads array
+  const safeLeads = Array.isArray(leads) ? leads : [];
+
+  const filteredLeads = safeLeads.filter((lead) => {
+    if (!lead) return false;
+    const q = searchQuery.toLowerCase();
+    const matchesSearch =
+      (lead.name || "").toLowerCase().includes(q) ||
+      (lead.company || "").toLowerCase().includes(q) ||
+      (lead.email || "").toLowerCase().includes(q);
+    const matchesStatus =
+      statusFilter === "ALL" || (lead.status || "NEW").toUpperCase() === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const handleDeleteLead = async (id: string) => {
+    if (!confirm("Delete this lead?")) return;
+    try {
+      const res = await fetch(`/api/leads/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setLeads((prev) => (Array.isArray(prev) ? prev.filter((l) => l.id !== id) : []));
+        toast({ title: "Deleted", description: "Lead removed from pipeline" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Delete failed", variant: "destructive" });
+    }
+  };
+
+  return (
+    <div className="mx-auto min-h-screen max-w-[1600px] space-y-6 p-6 md:p-8">
+      {/* Top Header */}
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+        <div>
+          <h1 className="flex items-center gap-3 text-2xl font-extrabold tracking-tight text-white md:text-3xl">
+            <Users className="h-7 w-7 text-blue-500" />
+            Lead Pipeline
+          </h1>
+        <button
+          type="button"
+          onClick={handleExportCsv}
+          className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-2 shadow-lg shadow-emerald-600/20"
+        >
+          <Download className="h-3.5 w-3.5" />
+          Export CSV
+        </button>
+        <div className="flex gap-2 flex-wrap"><button
+            type="button"
+            onClick={downloadLeadsCsv}
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-2"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export CSV
+          </button></div>
+          <p className="mt-1 text-sm text-slate-400">
+            Drag leads across pipeline stages Â· New â†’ Contacted â†’ Discussion â†’ Won
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center rounded-xl border border-slate-800 bg-[#0d1424] p-1 shadow-inner">
+            <button
+              onClick={() => switchView("kanban")}
+              className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
+                viewMode === "kanban"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              Kanban Board
+            </button>
+            <button
+              onClick={() => switchView("table")}
+              className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
+                viewMode === "table"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <TableIcon className="h-3.5 w-3.5" />
+              Table View
+            </button>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchLeads}
+            disabled={loading}
+            className="border-slate-800 bg-[#0d1424] text-slate-300 hover:bg-slate-800 hover:text-white"
+          >
+            <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            Sync
+          </Button>
+        </div>
+      </div>
+
+      {/* Filter & Search Bar */}
+      <div className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-800/80 bg-[#0a0f1d]/80 p-3 shadow-xl backdrop-blur-xl md:grid-cols-12">
+        <div className="relative md:col-span-5">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            placeholder="Search name, email, company..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="rounded-xl border-slate-800 bg-[#050811] pl-10 text-white placeholder:text-slate-500 focus-visible:ring-blue-500"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 md:col-span-4">
+          <Filter className="h-4 w-4 shrink-0 text-slate-400" />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full rounded-xl border border-slate-800 bg-[#050811] px-3 py-2.5 text-xs font-medium text-slate-300 focus:border-blue-500 focus:outline-none"
+          >
+            <option value="ALL">All Stages</option>
+            <option value="NEW">New Leads</option>
+            <option value="CONTACTED">Contacted</option>
+            <option value="IN_PROGRESS">In Discussion</option>
+            <option value="WON">Closed Won ðŸ”¥</option>
+            <option value="LOST">Closed Lost</option>
+          </select>
+        </div>
+
+        <div className="flex items-center justify-end pr-2 font-mono text-xs text-slate-400 md:col-span-3">
+          Showing <span className="mx-1 font-bold text-blue-400">{filteredLeads.length}</span> of {safeLeads.length} leads
+        </div>
+      </div>
+
+      {/* View Rendering */}
+      {loading ? (
+        <div className="flex h-96 flex-col items-center justify-center gap-3 text-slate-400">
+          <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
+          <p className="text-sm font-medium">Loading pipeline...</p>
+        </div>
+      ) : viewMode === "kanban" ? (
+        <KanbanBoard initialLeads={filteredLeads} onLeadUpdated={fetchLeads} />
+      ) : (
+        <div className="overflow-hidden rounded-2xl border border-slate-800 bg-[#070b13]/80 shadow-2xl backdrop-blur-xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-slate-800 bg-[#0c1222] font-semibold uppercase tracking-wider text-slate-400">
+                <tr>
+                  <th className="p-4">Name</th>
+                  <th className="p-4">Company</th>
+                  <th className="p-4">Email</th>
+                  <th className="p-4">Phone</th>
+                  <th className="p-4">Status</th>
+                  <th className="p-4">Source</th>
+                  <th className="p-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60">
+                {filteredLeads.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-8 text-center text-slate-500">
+                      No leads match criteria. Use NexScraper to harvest B2B leads.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredLeads.map((lead) => (
+                    <tr key={lead.id} className="transition-colors hover:bg-slate-800/30">
+                      <td className="p-4 font-medium text-white">{lead.name || "â€”"}</td>
+                      <td className="p-4 text-slate-300">{lead.company || "â€”"}</td>
+                      <td className="p-4 font-mono text-slate-400">{lead.email || "â€”"}</td>
+                      <td className="p-4 text-slate-400">{lead.phone || "â€”"}</td>
+                      <td className="p-4">
+                        <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[10px] font-bold text-blue-400">
+                          {lead.status || "NEW"}
+                        </span>
+                      </td>
+                      <td className="p-4 text-slate-500">{lead.source || "Direct"}</td>
+                      <td className="p-4 text-right">
+                        <button
+                          onClick={() => handleDeleteLead(lead.id)}
+                          className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-rose-500/10 hover:text-rose-400"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function LeadsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-slate-400">Loading pipeline...</div>}>
+      <LeadsContent />
+    </Suspense>
+  );
+}
+

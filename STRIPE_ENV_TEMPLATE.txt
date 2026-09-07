@@ -1,0 +1,12 @@
+﻿# ============================================
+# ADD THESE TO YOUR .env.local FILE
+# ============================================
+
+# Stripe Keys (Get from dashboard.stripe.com)
+STRIPE_SECRET_KEY="sk_test_xxxxxxxxxxxxxxxx"
+STRIPE_WEBHOOK_SECRET="whsec_xxxxxxxxxxxxxxxx"
+
+# Stripe Price IDs (Create in Stripe Dashboard → Products)
+STRIPE_PRICE_STARTER="price_xxxxxxxxxxxxxxxx"
+STRIPE_PRICE_PRO="price_xxxxxxxxxxxxxxxx"
+STRIPE_PRICE_ENTERPRISE="price_xxxxxxxxxxxxxxxx"

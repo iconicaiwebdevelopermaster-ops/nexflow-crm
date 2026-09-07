@@ -1,0 +1,306 @@
+﻿=== NEXFLOW CRM COMPACT AUDIT ===
+Date: 09/07/2026 19:46:24
+
+=== 1. ALL EXISTING PROJECT FILES ===
+\src\middleware.ts
+\src\app\favicon.ico
+\src\app\globals.css
+\src\app\layout.tsx
+\src\app\page.tsx
+\src\app\(auth)\login\page.tsx
+\src\app\(auth)\signup\page.tsx
+\src\app\(dashboard)\layout.tsx
+\src\app\(dashboard)\compose\page.tsx
+\src\app\(dashboard)\dashboard\page.tsx
+\src\app\(dashboard)\email-history\page.tsx
+\src\app\(dashboard)\emails\compose\page.tsx
+\src\app\(dashboard)\emails\history\page.tsx
+\src\app\(dashboard)\leads\page.tsx
+\src\app\(dashboard)\leads\page.tsx.broken.bak
+\src\app\(dashboard)\leads\import\page.tsx
+\src\app\(dashboard)\leads\kanban\page.tsx
+\src\app\(dashboard)\leads\new\page.tsx
+\src\app\(dashboard)\leads\[id]\page.tsx
+\src\app\(dashboard)\pipeline\page.tsx
+\src\app\(dashboard)\scraper\page.tsx
+\src\app\(dashboard)\settings\page.tsx
+\src\app\(dashboard)\tasks\page.tsx
+\src\app\(dashboard)\templates\page.tsx
+\src\app\(marketing)\layout.tsx
+\src\app\(marketing)\page.tsx
+\src\app\(marketing)\pricing\page.tsx
+\src\app\actions\authActions.ts
+\src\app\api\ai\generate-email\route.ts
+\src\app\api\auth\signup\route.ts
+\src\app\api\dashboard\stats\route.ts
+\src\app\api\emails\route.ts
+\src\app\api\emails\bulk-send\route.ts
+\src\app\api\emails\send\route.ts
+\src\app\api\leads\route.ts
+\src\app\api\leads\bulk\route.ts
+\src\app\api\leads\export\route.ts
+\src\app\api\leads\import\route.ts
+\src\app\api\leads\update-status\route.ts
+\src\app\api\leads\[id]\route.ts
+\src\app\api\scraper\import\route.ts
+\src\app\api\scraper\save\route.ts
+\src\app\api\scraper\search\route.ts
+\src\app\api\settings\route.ts
+\src\app\api\stripe\checkout\route.ts
+\src\app\api\stripe\webhook\route.ts
+\src\app\api\tasks\route.ts
+\src\app\api\tasks\[id]\route.ts
+\src\app\emails\page.tsx
+\src\app\fonts\GeistMonoVF.woff
+\src\app\fonts\GeistVF.woff
+\src\components\email\EmailComposer.tsx
+\src\components\email\TemplateCard.tsx
+\src\components\forms\LeadForm.tsx
+\src\components\forms\LoginForm.tsx
+\src\components\forms\SettingsForm.tsx
+\src\components\forms\SignupForm.tsx
+\src\components\kanban\KanbanBoard.tsx
+\src\components\kanban\KanbanCard.tsx
+\src\components\kanban\KanbanColumn.tsx
+\src\components\layout\Navbar.tsx
+\src\components\layout\PageHeader.tsx
+\src\components\layout\Sidebar.tsx
+\src\components\leads\kanban-board.tsx
+\src\components\leads\kanban-card.tsx
+\src\components\leads\kanban-column.tsx
+\src\components\leads\LeadStatusBadge.tsx
+\src\components\leads\LeadTable.tsx
+\src\components\providers\AuthProvider.tsx
+\src\components\providers\Providers.tsx
+\src\components\shared\EmptyState.tsx
+\src\components\tasks\TaskList.tsx
+\src\components\ui\badge.tsx
+\src\components\ui\button.tsx
+\src\components\ui\card.tsx
+\src\components\ui\input.tsx
+\src\components\ui\label.tsx
+\src\components\ui\textarea.tsx
+\src\components\ui\toast.tsx
+\src\components\ui\toaster.tsx
+\src\components\ui\use-toast.ts
+\src\hooks\use-toast.ts
+\src\lib\auth.config.ts
+\src\lib\auth.ts
+\src\lib\db.ts
+\src\lib\email.ts
+\src\lib\prisma.ts
+\src\lib\scraper-engine.ts
+\src\lib\stripe.ts
+\src\lib\utils.ts
+\src\lib\validations.ts
+\src\types\index.ts
+\src\types\next-auth.d.ts
+\prisma\create-user.js
+\prisma\schema.prisma
+\prisma\seed.js
+
+=== 2. PACKAGE.JSON ===
+{
+    "name":  "temp-app",
+    "version":  "0.1.0",
+    "private":  true,
+    "scripts":  {
+                    "dev":  "next dev -p 3001",
+                    "build":  "prisma generate \u0026\u0026 next build",
+                    "start":  "next start",
+                    "lint":  "next lint",
+                    "postinstall":  "prisma generate",
+                    "db:generate":  "prisma generate",
+                    "db:push":  "prisma db push",
+                    "db:seed":  "node prisma/seed.js"
+                },
+    "dependencies":  {
+                         "@dnd-kit/core":  "^6.3.1",
+                         "@dnd-kit/sortable":  "^10.0.0",
+                         "@dnd-kit/utilities":  "^3.2.2",
+                         "@hello-pangea/dnd":  "^18.0.1",
+                         "@hookform/resolvers":  "^5.9.1",
+                         "@prisma/client":  "^5.22.0",
+                         "@tanstack/react-query":  "^5.102.4",
+                         "bcryptjs":  "^3.0.3",
+                         "class-variance-authority":  "^0.7.1",
+                         "clsx":  "^2.1.1",
+                         "date-fns":  "^4.4.0",
+                         "framer-motion":  "^13.1.1",
+                         "lucide-react":  "^1.34.0",
+                         "next":  "14.2.35",
+                         "next-auth":  "^5.0.0-beta.32",
+                         "nodemailer":  "^6.9.13",
+                         "react":  "^18",
+                         "react-dom":  "^18",
+                         "react-hook-form":  "^7.86.0",
+                         "react-icons":  "^5.7.0",
+                         "stripe":  "^22.6.0",
+                         "tailwind-merge":  "^3.6.0",
+                         "uuid":  "^14.0.2",
+                         "zod":  "^4.4.3"
+                     },
+    "devDependencies":  {
+                            "@types/bcryptjs":  "^2.4.6",
+                            "@types/node":  "^20",
+                            "@types/nodemailer":  "^6.4.15",
+                            "@types/react":  "^18",
+                            "@types/react-dom":  "^18",
+                            "@types/uuid":  "^10.0.0",
+                            "eslint":  "^8",
+                            "eslint-config-next":  "14.2.35",
+                            "postcss":  "^8",
+                            "prisma":  "^5.22.0",
+                            "tailwindcss":  "^3.4.1",
+                            "tsx":  "^4.23.12",
+                            "typescript":  "^5"
+                        }
+}
+
+=== 3. PRISMA SCHEMA ===
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  REPLIED
+  WON
+  LOST
+}
+
+enum EmailStatus {
+  SENT
+  FAILED
+  BOUNCED
+}
+
+enum ActivityType {
+  EMAIL_SENT
+  STATUS_CHANGED
+  NOTE_ADDED
+}
+
+model User {
+  id            String       @id @default(uuid())
+  name          String?
+  email         String       @unique
+  password      String
+  smtpHost      String?      @map("smtp_host")
+  smtpPort      Int?         @map("smtp_port")
+  smtpUser      String?      @map("smtp_user")
+  smtpPass      String?      @map("smtp_pass")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  leads         Lead[]
+  templates     Template[]
+  emailsSent    EmailSent[]
+  tasks         Task[]
+
+  @@map("users")
+}
+
+model Lead {
+  id          String       @id @default(uuid())
+  name        String
+  email       String
+  phone       String?
+  company     String?
+  website     String?
+  status      LeadStatus   @default(NEW)
+  source      String?      @default("Manual")
+  notes       String?      @db.Text
+  userId      String       @map("user_id")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailsSent  EmailSent[]
+  tasks       Task[]
+  activities  Activity[]
+
+  @@map("leads")
+}
+
+model Template {
+  id          String       @id @default(uuid())
+  name        String
+  category    String       @default("Cold Outreach")
+  subject     String
+  body        String       @db.Text
+  userId      String?      @map("user_id")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  user        User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailsSent  EmailSent[]
+
+  @@map("templates")
+}
+
+model EmailSent {
+  id          String       @id @default(uuid())
+  leadId      String       @map("lead_id")
+  templateId  String?      @map("template_id")
+  userId      String       @map("user_id")
+  subject     String
+  body        String       @db.Text
+  status      EmailStatus  @default(SENT)
+  sentAt      DateTime     @default(now()) @map("sent_at")
+
+  lead        Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  template    Template?    @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("emails_sent")
+}
+
+model Task {
+  id          String       @id @default(uuid())
+  title       String
+  completed   Boolean      @default(false)
+  leadId      String?      @map("lead_id")
+  dueDate     DateTime?    @map("due_date")
+  userId      String       @map("user_id")
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lead        Lead?        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@map("tasks")
+}
+
+model Activity {
+  id          String       @id @default(uuid())
+  leadId      String       @map("lead_id")
+  type        ActivityType
+  description String
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  lead        Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@map("activities")
+}
+=== 4. ENV KEYS FOUND ===
+DATABASE_URL
+NEXTAUTH_SECRET
+AUTH_SECRET
+NEXTAUTH_URL
+AUTH_TRUST_HOST
+SERPER_API_KEY
+EMAIL_PROVIDER
+GMAIL_USER
+GMAIL_PASS
+EMAIL_FROM
+EMAIL_FROM_NAME
+EMAIL_SIMULATE
+RESEND_API_KEY
+

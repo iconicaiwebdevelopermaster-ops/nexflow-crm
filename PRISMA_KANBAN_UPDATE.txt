@@ -1,0 +1,18 @@
+﻿// =====================================================
+// ADD THIS TO YOUR prisma/schema.prisma FILE
+// Add the enum at the top and the field to Lead model
+// =====================================================
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  REPLIED
+  MEETING
+  WON
+  LOST
+}
+
+// In your Lead model, add this field:
+// status    LeadStatus   @default(NEW)
+
+// Then run: npx prisma db push

@@ -1,42 +1,53 @@
 "use client";
 
-import { signOut, useSession } from "next-auth/react";
-import { LogOut, User as UserIcon } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
+import Link from "next/link";
+import { LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function Navbar() {
   const { data: session } = useSession();
 
   return (
-    <header className="h-16 border-b border-slate-800 bg-[#0A0D14]/80 backdrop-blur-md sticky top-0 z-20 flex items-center justify-between px-8 ml-64">
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-medium text-slate-400">Workspace:</span>
-        <span className="text-xs font-semibold text-slate-200 bg-slate-800/80 px-2.5 py-1 rounded-full border border-slate-700">
-          NexPulseLabs Studio
+    <header className="sticky top-0 z-40 h-14 border-b border-slate-800/80 bg-[#070A12]/80 backdrop-blur-md px-4 md:px-6 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <span className="text-xs md:text-sm text-slate-400">
+          Workspace:{" "}
+          <span className="inline-flex items-center rounded-full border border-slate-700 bg-slate-900/80 px-2.5 py-0.5 text-xs font-medium text-slate-200">
+            NexPulseLabs Studio
+          </span>
         </span>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 font-semibold text-xs">
-            {session?.user?.name ? session.user.name[0].toUpperCase() : <UserIcon className="w-4 h-4" />}
-          </div>
-          <div className="text-left hidden sm:block">
-            <p className="text-xs font-medium text-slate-200">{session?.user?.name || "Founder"}</p>
-            <p className="text-[10px] text-slate-400 font-mono">{session?.user?.email}</p>
-          </div>
-        </div>
-
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          className="text-slate-400 hover:text-red-400 hover:bg-red-500/10 h-8 px-2.5 gap-1.5"
-        >
-          <LogOut className="w-3.5 h-3.5" />
-          <span className="text-xs">Logout</span>
-        </Button>
+      <div className="flex items-center gap-3">
+        {session?.user && (
+          <>
+            <div className="hidden sm:flex flex-col items-end">
+              <span className="text-sm font-medium text-slate-200 leading-none">
+                {session.user.name || "User"}
+              </span>
+              <span className="text-[11px] text-slate-500 leading-none mt-0.5">
+                {session.user.email}
+              </span>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-xs font-bold text-white">
+              {(session.user.name || session.user.email || "U")
+                .charAt(0)
+                .toUpperCase()}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 text-slate-400 hover:text-slate-100"
+              onClick={() => signOut({ callbackUrl: "/login" })}
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </>
+        )}
       </div>
     </header>
   );
 }
+
+export default Navbar;

@@ -1,90 +1,124 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { sendOutreachEmail } from "@/lib/email";
-import { EmailStatus } from "@prisma/client";
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { getGmailClientForUser } from '@/lib/gmail-client';
+import { LeadStatus, EmailStatus, ActivityType } from '@prisma/client';
 
-export const dynamic = "force-dynamic";
-
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { leadId, templateId, subject, body } = await req.json();
+    const body = await req.json();
+    const { leadId, subject, body: emailBody, templateId } = body;
 
-    if (!leadId || !subject || !body) {
-      return NextResponse.json({ success: false, error: "Lead, subject, and body are required." }, { status: 400 });
+    if (!leadId || !subject || !emailBody) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const [user, lead] = await Promise.all([
-      prisma.user.findUnique({ where: { id: session.user.id } }),
-      prisma.lead.findFirst({ where: { id: leadId, userId: session.user.id } }),
-    ]);
+    // 1. Fetch Lead
+    const lead = await prisma.lead.findUnique({
+      where: { id: leadId },
+    });
 
-    if (!user || !lead) {
-      return NextResponse.json({ success: false, error: "Lead or User not found." }, { status: 404 });
+    if (!lead || lead.userId !== session.user.id) {
+      return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
     }
 
-    let emailStatus: EmailStatus = "SENT";
-    try {
-      await sendOutreachEmail({
-        to: lead.email,
-        subject,
-        body,
-        userSmtp: {
-          host: user.smtpHost,
-          port: user.smtpPort,
-          user: user.smtpUser,
-          pass: user.smtpPass,
-        },
-      });
-    } catch (err: any) {
-      console.error("Email send failed:", err.message);
-      emailStatus = "FAILED";
+    // 2. Fetch Connected Gmail Account & Check Daily Quota
+    const gmailAccount = await prisma.gmailAccount.findFirst({
+      where: { userId: session.user.id, isActive: true },
+    });
+
+    if (!gmailAccount) {
+      return NextResponse.json(
+        { error: 'No active Gmail account found. Please connect your Gmail in Settings.' },
+        { status: 400 }
+      );
     }
 
-    const sentRecord = await prisma.emailSent.create({
-      data: {
-        userId: session.user.id,
-        leadId: lead.id,
-        templateId: templateId || null,
-        subject,
-        body,
-        status: emailStatus,
+    if (gmailAccount.sentToday >= gmailAccount.dailyQuota) {
+      return NextResponse.json(
+        { error: `Daily sending limit reached (${gmailAccount.dailyQuota}/day). Try again tomorrow.` },
+        { status: 429 }
+      );
+    }
+
+    // 3. Prepare RFC 2822 Email Format
+    const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
+    const messageParts = [
+      `From: ${gmailAccount.email}`,
+      `To: ${lead.email}`,
+      `Subject: ${utf8Subject}`,
+      'MIME-Version: 1.0',
+      'Content-Type: text/html; charset=utf-8',
+      'Content-Transfer-Encoding: 7bit',
+      '',
+      emailBody.replace(/\n/g, '<br/>'),
+    ];
+    const rawMessage = Buffer.from(messageParts.join('\r\n'))
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    // 4. Send via Gmail API
+    const gmail = await getGmailClientForUser(session.user.id);
+    const response = await gmail.users.messages.send({
+      userId: 'me',
+      requestBody: {
+        raw: rawMessage,
       },
     });
 
-    if (emailStatus === "SENT") {
-      if (lead.status === "NEW") {
-        await prisma.lead.update({
-          where: { id: lead.id },
-          data: { status: "CONTACTED" },
-        });
-      }
+    const gmailMessageId = response.data.id || '';
+    const gmailThreadId = response.data.threadId || '';
 
-      await prisma.activity.create({
+    // 5. Database Transaction (Log Email + Update Lead Status + Activity + Update Quota)
+    await prisma.$transaction([
+      prisma.emailSent.create({
+        data: {
+          userId: session.user.id,
+          leadId: lead.id,
+          templateId: templateId || null,
+          subject,
+          body: emailBody,
+          gmailMessageId,
+          gmailThreadId,
+          deliveryStatus: 'sent',
+          status: EmailStatus.SENT,
+        },
+      }),
+      prisma.lead.update({
+        where: { id: lead.id },
+        data: { status: LeadStatus.SENT },
+      }),
+      prisma.gmailAccount.update({
+        where: { id: gmailAccount.id },
+        data: { sentToday: { increment: 1 } },
+      }),
+      prisma.activity.create({
         data: {
           leadId: lead.id,
-          type: "EMAIL_SENT",
-          description: `Sent cold outreach email: "${subject}"`,
+          type: ActivityType.EMAIL_SENT,
+          description: `Cold email sent via Gmail API: "${subject}"`,
         },
-      });
+      }),
+    ]);
 
-      return NextResponse.json({
-        success: true,
-        data: sentRecord,
-        message: "Email sent successfully!",
-      });
-    } else {
-      return NextResponse.json({
-        success: false,
-        error: "Failed to dispatch email. Check your SMTP settings.",
-      }, { status: 500 });
-    }
+    return NextResponse.json({
+      success: true,
+      message: 'Email sent successfully via Gmail API!',
+      gmailMessageId,
+      gmailThreadId,
+    });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('Email Sending Error:', error);
+    return NextResponse.json(
+      { error: error?.message || 'Failed to send email via Gmail API' },
+      { status: 500 }
+    );
   }
 }

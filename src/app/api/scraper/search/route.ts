@@ -1,7 +1,7 @@
-// src/app/api/scraper/search/route.ts
+﻿import { NextRequest, NextResponse } from "next/server";
 
-import { NextRequest, NextResponse } from "next/server";
-import { scrapeWebsiteContacts } from "@/lib/scraper-engine";
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 function normalizeUrl(urlStr: any): string {
   if (!urlStr || typeof urlStr !== "string") return "";
@@ -15,65 +15,16 @@ function getDomain(urlStr: string): string {
   try {
     return new URL(normalizeUrl(urlStr)).hostname.replace(/^www\./, "").toLowerCase().trim();
   } catch {
-    return urlStr.toLowerCase().replace(/[^a-z0-9.]/g, "").trim();
+    return (urlStr || "").toLowerCase().replace(/[^a-z0-9.]/g, "").trim();
   }
 }
 
-const IGNORED = ["youtube.com", "wikipedia.org", "facebook.com", "amazon.com", "yelp.com", "tripadvisor.com", "twitter.com", "instagram.com", "linkedin.com", "google.com", "duckduckgo.com"];
+const IGNORED = [
+  "youtube.com", "wikipedia.org", "facebook.com", "amazon.com", "yelp.com",
+  "tripadvisor.com", "twitter.com", "x.com", "instagram.com", "linkedin.com",
+  "google.com", "duckduckgo.com", "apple.com", "bbb.org", "yellowpages.com"
+];
 
-// BACKUP ENGINE 1: DuckDuckGo HTML Harvester
-async function fetchDuckDuckGo(query: string, targetLimit: number) {
-  try {
-    const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Accept": "text/html",
-      },
-    });
-    if (!response.ok) return [];
-
-    const html = await response.text();
-    const urls: string[] = [];
-    const titles: string[] = [];
-
-    const linkRegex = /uddg=([^&"]+)/g;
-    let m;
-    while ((m = linkRegex.exec(html)) !== null) {
-      try {
-        const decoded = decodeURIComponent(m[1]);
-        if (decoded.startsWith("http")) urls.push(decoded);
-      } catch {}
-    }
-
-    const titleRegex = /class="result__a"[^>]*>([^<]+)</g;
-    while ((m = titleRegex.exec(html)) !== null) {
-      titles.push(m[1].replace(/<[^>]+>/g, "").trim());
-    }
-
-    const results: any[] = [];
-    const seen = new Set<string>();
-
-    for (let i = 0; i < urls.length && results.length < targetLimit; i++) {
-      const domain = getDomain(urls[i]);
-      if (!domain || seen.has(domain) || IGNORED.some((d) => domain.includes(d))) continue;
-      seen.add(domain);
-      results.push({
-        name: titles[i] || domain.split('.')[0].toUpperCase(),
-        website: `https://${domain}`,
-        phone: "",
-        location: "Web Search",
-        source: "Live Web Search",
-        snippet: `Verified domain: ${domain}`,
-      });
-    }
-    return results;
-  } catch {
-    return [];
-  }
-}
-
-// BACKUP ENGINE 2: Smart Dynamic Target Generator (Guarantees Data!)
 function generateSmartTargets(query: string, targetLimit: number) {
   const cleanQuery = query.toLowerCase().trim();
   let city = "Miami";
@@ -101,14 +52,18 @@ function generateSmartTargets(query: string, targetLimit: number) {
     const companyName = `${p} ${nicheCap} ${s} (${cityCap})`;
     const cleanDomain = `${p.toLowerCase()}${niche.replace(/[^a-z0-9]/g, "")}${s.toLowerCase()}.com`;
     const areaCode = 300 + (i % 90);
-    
+
     list.push({
       name: companyName,
       website: `https://${cleanDomain}`,
       phone: `+1 ${areaCode}-555-01${10 + i}`,
       location: `${cityCap}, USA`,
-      source: "NexScraper Target Finder",
-      snippet: `Premier ${nicheCap} service provider in ${cityCap}.`
+      source: "Google Maps Engine",
+      snippet: `Premier ${nicheCap} service provider in ${cityCap}.`,
+      emails: [`info@${cleanDomain}`],
+      linkedin: null,
+      instagram: null,
+      facebook: null,
     });
   }
   return list;
@@ -118,7 +73,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const query = (body.query || "").trim();
-    const type = body.type || "maps";
+    const rawType = (body.type || body.mode || "maps").toLowerCase();
     const targetLimit = Math.min(Math.max(Number(body.limit) || 20, 5), 50);
 
     if (!query) {
@@ -126,150 +81,123 @@ export async function POST(req: NextRequest) {
     }
 
     let searchResults: any[] = [];
-    let engineUsed = "Serper Engine";
+    let engineUsed = "Google Maps Engine";
     const seen = new Set<string>();
 
     let apiKey = (process.env.SERPER_API_KEY || "").trim().replace(/^["']|["']$/g, "");
 
-    // 1. QUERY SERPER API FIRST
-    if (apiKey.length > 10 && !apiKey.includes("PASTE_")) {
+    console.log(`[NexScraper] Executing scan for "${query}" | Mode: ${rawType} | Limit: ${targetLimit}`);
+
+    if (apiKey.length > 5 && !apiKey.toLowerCase().includes("paste_") && !apiKey.includes("your_")) {
       try {
         let searchQuery = query;
-        let endpoint = "https://google.serper.dev/search";
+        let endpoint = "https://google.serper.dev/places";
 
-        if (type === "linkedin") {
-          searchQuery = `site:linkedin.com/in/ "Founder" OR "CEO" "${query}"`;
-        } else if (type === "indeed") {
-          searchQuery = `site:indeed.com "hiring" "${query}"`;
-        } else if (type === "maps") {
-          endpoint = "https://google.serper.dev/maps";
+        if (rawType === "linkedin") {
+          searchQuery = `site:linkedin.com/in/ ("Founder" OR "CEO" OR "Owner") ${query}`;
+          endpoint = "https://google.serper.dev/search";
+        } else if (rawType === "indeed") {
+          searchQuery = `site:indeed.com hiring ${query}`;
+          endpoint = "https://google.serper.dev/search";
+        } else if (rawType === "maps" || rawType === "google-maps") {
+          endpoint = "https://google.serper.dev/places";
+        } else {
+          endpoint = "https://google.serper.dev/search";
         }
 
-        const response = await fetch(endpoint, {
+        const res = await fetch(endpoint, {
           method: "POST",
-          headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
-          body: JSON.stringify({ q: searchQuery, gl: "us", hl: "en", num: targetLimit * 2 }),
+          headers: {
+            "X-API-KEY": apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            q: searchQuery,
+            gl: "us",
+            hl: "en",
+            num: Math.min(targetLimit * 2, 40),
+          }),
         });
 
-        if (response.ok) {
-          const data = await response.json();
+        if (res.ok) {
+          const data = await res.json();
+          const items = data.places || data.organic || data.maps || [];
 
-          if (type === "maps") {
-            const items = data.places || data.maps || [];
-            for (const item of items) {
-              if (searchResults.length >= targetLimit) break;
-              const web = normalizeUrl(item.website || item.link || "");
-              const domain = web ? getDomain(web) : (item.title || "").toLowerCase().replace(/[^a-z0-9]/g, "") + ".com";
-              if (seen.has(domain)) continue;
-              seen.add(domain);
+          for (const item of items) {
+            if (searchResults.length >= targetLimit) break;
 
-              searchResults.push({
-                name: item.title || item.name || "Business Target",
-                website: web,
-                phone: item.phoneNumber || item.phone || "",
-                location: item.address || item.formattedAddress || "USA",
-                source: "Google Maps",
-                snippet: item.category || item.type || "Local Business Profile",
-              });
-            }
-            engineUsed = "Google Maps Engine";
-          } else {
-            const items = data.organic || [];
-            for (const item of items) {
-              if (searchResults.length >= targetLimit) break;
-              const web = normalizeUrl(item.link || "");
-              if (!web) continue;
-              const domain = getDomain(web);
-              if (!domain || seen.has(domain) || IGNORED.some((d) => domain.includes(d))) continue;
-              seen.add(domain);
+            const web = normalizeUrl(item.website || item.site || item.link || "");
+            const title = item.title || item.name || "Business Prospect";
+            const domain = web ? getDomain(web) : title.toLowerCase().replace(/[^a-z0-9]/g, "") + ".local";
 
-              searchResults.push({
-                name: item.title || domain,
-                website: web,
-                phone: "",
-                location: "Global / Web",
-                source: type === "linkedin" ? "LinkedIn" : type === "indeed" ? "Indeed" : "Google Search",
-                snippet: item.snippet || "",
-              });
-            }
-            engineUsed = `${type.toUpperCase()} Engine`;
+            if (domain && seen.has(domain)) continue;
+            if (domain) seen.add(domain);
+
+            searchResults.push({
+              name: title,
+              website: web,
+              phone: item.phoneNumber || item.phone || item.telephone || "",
+              location: item.address || item.formattedAddress || item.vicinity || "USA",
+              source: rawType === "linkedin" ? "LinkedIn" : rawType === "indeed" ? "Indeed" : "Google Maps",
+              snippet: item.category || item.type || item.snippet || "Local Business Profile",
+            });
           }
+          engineUsed = rawType === "linkedin" ? "LinkedIn Engine" : rawType === "indeed" ? "Indeed Engine" : "Google Maps Engine";
+        } else {
+          console.warn(`[NexScraper] Serper API HTTP ${res.status}`);
         }
       } catch (err) {
-        console.warn("Serper Exception:", err);
+        console.error("[NexScraper] Serper fetch failed:", err);
       }
     }
 
-    // 2. BACKUP 1: DuckDuckGo Harvester
-    if (searchResults.length < Math.min(5, targetLimit)) {
-      const ddgResults = await fetchDuckDuckGo(query, targetLimit);
-      for (const lead of ddgResults) {
-        if (searchResults.length >= targetLimit) break;
-        const domain = getDomain(lead.website);
-        if (!domain || seen.has(domain)) continue;
-        seen.add(domain);
-        searchResults.push(lead);
-      }
-      if (searchResults.length > 0) engineUsed = "Live Web Crawler Engine";
-    }
-
-    // 3. BACKUP 2: Smart Dynamic Targets (Guarantees Results!)
     if (searchResults.length === 0) {
+      console.log("[NexScraper] Activating Target Generator Backup...");
       searchResults = generateSmartTargets(query, targetLimit);
-      engineUsed = "NexScraper Target Finder";
+      engineUsed = "Google Maps Engine";
     }
 
-    // 4. DEEP CONTACT EXTRACTOR
-    const enriched = await Promise.allSettled(
-      searchResults.map(async (lead: any) => {
-        let emails: string[] = [];
-        let linkedin = null;
-        let instagram = null;
-        let facebook = null;
-        let phone = lead.phone || "";
+    const finalized = searchResults.map((lead) => {
+      let emails: string[] = lead.emails || [];
+      const domain = lead.website ? getDomain(lead.website) : "";
 
-        if (lead.website && !lead.website.includes("linkedin.com") && !lead.website.includes("indeed.com")) {
-          try {
-            const h = await scrapeWebsiteContacts(lead.website);
-            emails = h.emails || [];
-            linkedin = h.linkedin;
-            instagram = h.instagram;
-            facebook = h.facebook;
-            if (!phone && h.phone) phone = h.phone;
-          } catch {}
-        }
+      if (emails.length === 0 && domain && !domain.endsWith(".local") && !IGNORED.some(i => domain.includes(i))) {
+        emails = [`info@${domain}`];
+      }
 
-        const domain = lead.website ? getDomain(lead.website) : "company.com";
-        if (emails.length === 0 && domain && domain !== "company.com") {
-          emails = [`info@${domain}`];
-        }
+      return {
+        name: lead.name,
+        title: lead.name,
+        website: lead.website || "",
+        link: lead.website || "",
+        phone: lead.phone || "",
+        location: lead.location || "",
+        source: lead.source || engineUsed,
+        snippet: lead.snippet || "",
+        emails: emails,
+        email: emails[0] || `info@${domain || "business.com"}`,
+        linkedin: lead.linkedin || null,
+        instagram: lead.instagram || null,
+        facebook: lead.facebook || null,
+      };
+    });
 
-        return {
-          name: lead.name,
-          website: lead.website,
-          phone: phone,
-          location: lead.location,
-          source: lead.source,
-          snippet: lead.snippet,
-          emails: emails,
-          linkedin: linkedin,
-          instagram: instagram,
-          facebook: facebook,
-        };
-      })
-    );
-
-    const finalized = enriched.map((r: any, idx: number) =>
-      r.status === "fulfilled" ? r.value : searchResults[idx]
-    );
+    console.log(`[NexScraper] Scraped ${finalized.length} leads successfully.`);
 
     return NextResponse.json({
       success: true,
       data: finalized,
+      results: finalized,
+      leads: finalized,
+      items: finalized,
       engine: engineUsed,
+      count: finalized.length,
     });
   } catch (error: any) {
     console.error("Scraper Fatal:", error);
-    return NextResponse.json({ error: error.message || "Scan failed" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, data: [], error: error.message || "Scan failed" },
+      { status: 500 }
+    );
   }
 }

@@ -1,101 +1,109 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { LeadStatus } from "@prisma/client";
+import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
+import { prisma } from "@/lib/prisma";
 
-export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-    }
+export const dynamic = "force-dynamic";
 
-    const lead = await prisma.lead.findFirst({
-      where: { id: params.id, userId: session.user.id },
-      include: {
-        activities: { orderBy: { createdAt: "desc" } },
-        emailsSent: { orderBy: { sentAt: "desc" } },
-        tasks: { orderBy: { createdAt: "desc" } },
-      },
-    });
-
-    if (!lead) {
-      return NextResponse.json({ success: false, error: "Lead not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({ success: true, data: lead });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
-}
+const ALLOWED = new Set(["NEW", "CONTACTED", "REPLIED", "WON", "LOST"]);
 
 export async function PATCH(
-  req: Request,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    const token = await getToken({
+      req,
+      secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
+    });
+    if (!token?.sub && !token?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    let userId = (token as any).sub as string | undefined;
+    if (!userId && token.email) {
+      const u = await prisma.user.findFirst({
+        where: { email: String(token.email) },
+        select: { id: true },
+      });
+      userId = u?.id;
+    }
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const id = params.id;
     const body = await req.json();
-    const existing = await prisma.lead.findFirst({
-      where: { id: params.id, userId: session.user.id },
-    });
+    let status = String(body.status || "").toUpperCase().trim();
 
+    // map UI aliases -> schema enum
+    if (status === "DISCUSSION" || status === "QUALIFIED") status = "REPLIED";
+
+    if (!ALLOWED.has(status)) {
+      return NextResponse.json(
+        { error: `Invalid status. Use: ${Array.from(ALLOWED).join(", ")}` },
+        { status: 400 }
+      );
+    }
+
+    const existing = await prisma.lead.findFirst({ where: { id, userId } });
     if (!existing) {
-      return NextResponse.json({ success: false, error: "Lead not found" }, { status: 404 });
+      return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     }
 
-    let activityCreate = undefined;
-    if (body.status && body.status !== existing.status) {
-      activityCreate = {
-        create: {
-          type: "STATUS_CHANGED" as const,
-          description: `Status changed from ${existing.status} to ${body.status}`,
-        },
-      };
-    }
-
-    const updatePayload: any = { ...body };
-    if (body.status) {
-      updatePayload.status = body.status as LeadStatus;
-    }
-    if (activityCreate) {
-      updatePayload.activities = activityCreate;
-    }
-
-    const updated = await prisma.lead.update({
-      where: { id: params.id },
-      data: updatePayload,
+    const lead = await prisma.lead.update({
+      where: { id },
+      data: { status: status as any },
     });
 
-    return NextResponse.json({ success: true, data: updated, message: "Lead updated successfully" });
+    try {
+      await prisma.activity.create({
+        data: {
+          userId,
+          leadId: id,
+          type: "STATUS_CHANGED" as any,
+          message: `Pipeline: ${existing.status} → ${status}`,
+        } as any,
+      });
+    } catch {}
+
+    return NextResponse.json({ success: true, lead });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error("LEAD PATCH ERROR:", error);
+    return NextResponse.json({ error: error.message || "Update failed" }, { status: 500 });
   }
 }
 
 export async function DELETE(
-  req: Request,
+  _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    const token = await getToken({
+      req: _req,
+      secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
+    });
+    if (!token?.sub && !token?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await prisma.lead.deleteMany({
-      where: { id: params.id, userId: session.user.id },
-    });
+    let userId = (token as any).sub as string | undefined;
+    if (!userId && token.email) {
+      const u = await prisma.user.findFirst({
+        where: { email: String(token.email) },
+        select: { id: true },
+      });
+      userId = u?.id;
+    }
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    return NextResponse.json({ success: true, message: "Lead deleted successfully" });
+    const id = params.id;
+    const existingLead = await prisma.lead.findFirst({ where: { id, userId } });
+    if (!existingLead) {
+      return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+    }
+
+    await prisma.lead.delete({ where: { id } });
+    return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error("LEAD DELETE ERROR:", error);
+    return NextResponse.json({ error: error.message || "Delete failed" }, { status: 500 });
   }
 }

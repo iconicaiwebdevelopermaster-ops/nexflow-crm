@@ -1,3 +1,5 @@
+import React from "react";
+
 interface PageHeaderProps {
   title: string;
   description?: string;
@@ -6,12 +8,20 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, children }: PageHeaderProps) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
       <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">{title}</h1>
-        {description && <p className="text-sm text-slate-400 mt-1">{description}</p>}
+        <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-100">
+          {title}
+        </h1>
+        {description && (
+          <p className="text-sm text-slate-400 mt-0.5">{description}</p>
+        )}
       </div>
-      {children && <div className="flex items-center gap-3">{children}</div>}
+      {children && (
+        <div className="flex items-center gap-2 flex-shrink-0">{children}</div>
+      )}
     </div>
   );
 }
+
+export default PageHeader;
