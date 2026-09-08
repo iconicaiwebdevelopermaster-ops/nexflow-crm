@@ -8,6 +8,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
 enum LeadStatus {
   NEW
   QUEUED
@@ -55,6 +61,8 @@ model User {
   name          String?
   email         String          @unique
   password      String
+  role          UserRole        @default(USER)
+  lastLoginAt   DateTime?       @map("last_login_at")
   smtpHost      String?         @map("smtp_host")
   smtpPort      Int?            @map("smtp_port")
   smtpUser      String?         @map("smtp_user")
@@ -62,14 +70,43 @@ model User {
   createdAt     DateTime        @default(now()) @map("created_at")
   updatedAt     DateTime        @updatedAt @map("updated_at")
 
-  leads         Lead[]
-  templates     Template[]
-  emailsSent    EmailSent[]
-  tasks         Task[]
-  gmailAccounts GmailAccount[]
-  campaigns     Campaign[]
+  leads            Lead[]
+  templates        Template[]
+  emailsSent       EmailSent[]
+  tasks            Task[]
+  gmailAccounts    GmailAccount[]
+  campaigns        Campaign[]
+  scraperSearches  ScraperSearch[]
 
   @@map("users")
+}
+
+model ScraperSearch {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  query         String
+  source        String
+  city          String?
+  niche         String?
+  resultsCount  Int       @default(0) @map("results_count")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("scraper_searches")
+}
+
+model AdminLog {
+  id          String    @id @default(uuid())
+  adminId     String    @map("admin_id")
+  action      String
+  target      String?
+  details     String?   @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([adminId, createdAt])
+  @@map("admin_logs")
 }
 
 model GmailAccount {
@@ -120,6 +157,7 @@ model Lead {
   followupSequences FollowupSequence[]
 
   @@index([userId, status])
+  @@index([createdAt])
   @@map("leads")
 }
 
@@ -199,6 +237,7 @@ model EmailSent {
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([gmailThreadId])
+  @@index([sentAt])
   @@map("emails_sent")
 }
 
@@ -226,5 +265,6 @@ model Activity {
 
   lead        Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
+  @@index([createdAt])
   @@map("activities")
 }
