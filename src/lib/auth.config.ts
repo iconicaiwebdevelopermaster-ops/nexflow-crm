@@ -1,52 +1,26 @@
-import type { NextAuthConfig } from "next-auth";
+import type { NextAuthConfig } from 'next-auth';
 
-if (process.env.VERCEL || process.env.NODE_ENV === "production") {
-  delete process.env.NEXTAUTH_URL;
-}
-
-export const authConfig = {
+export const authConfig: NextAuthConfig = {
   trustHost: true,
-  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "nexflow-super-secret-key-change-in-production-2026",
-  session: { strategy: "jwt" },
-  pages: {
-    signIn: "/login",
-  },
   providers: [],
+  pages: {
+    signIn: '/login',
+  },
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const { pathname } = nextUrl;
+      const isOnDashboard = nextUrl.pathname.startsWith('/dashboard') ||
+                            nextUrl.pathname.startsWith('/mrwoo') ||
+                            nextUrl.pathname.startsWith('/leads') ||
+                            nextUrl.pathname.startsWith('/scraper') ||
+                            nextUrl.pathname.startsWith('/emails') ||
+                            nextUrl.pathname.startsWith('/settings');
 
-      const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup");
-      const isProtectedPage =
-        pathname.startsWith("/dashboard") ||
-        pathname.startsWith("/leads") ||
-        pathname.startsWith("/templates") ||
-        pathname.startsWith("/emails") ||
-        pathname.startsWith("/tasks") ||
-        pathname.startsWith("/settings");
-
-      if (isAuthPage && isLoggedIn) {
-        return Response.redirect(new URL("/dashboard", nextUrl));
+      if (isOnDashboard) {
+        if (isLoggedIn) return true;
+        return false; // Redirect unauthenticated users to /login
       }
-
-      if (isProtectedPage && !isLoggedIn) {
-        return Response.redirect(new URL("/login", nextUrl));
-      }
-
       return true;
     },
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.id as string;
-      }
-      return session;
-    },
   },
-} satisfies NextAuthConfig;
+};
