@@ -1,9 +1,10 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
 import nodemailer from "nodemailer";
 
-export const dynamic = "force-dynamic";
 
 function clean(s: any) {
   return String(s ?? "").trim();

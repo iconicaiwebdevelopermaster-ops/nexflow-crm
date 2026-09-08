@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
@@ -8,7 +10,6 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Users, Mail, CheckCircle2, Clock, Send, Flame, Radar, Kanban } from 'lucide-react';
 
-export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   const session = await auth();

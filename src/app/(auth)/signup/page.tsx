@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { SignupForm } from "@/components/forms/SignupForm";
 
 export default function SignupPage() {

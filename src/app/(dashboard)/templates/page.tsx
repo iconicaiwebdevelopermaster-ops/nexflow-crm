@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 import { prisma } from "@/lib/db";
 
-export const dynamic = "force-dynamic";
 
 export default async function TemplatesPage() {
   const templates = await prisma.template.findMany({

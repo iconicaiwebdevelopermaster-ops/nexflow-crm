@@ -1,8 +1,9 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
 
-export const dynamic = "force-dynamic";
 
 function esc(v: any) {
   const s = v === null || v === undefined ? "" : String(v);

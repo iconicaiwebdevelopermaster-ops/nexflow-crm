@@ -1,8 +1,9 @@
-﻿import React from "react";
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+import React from "react";
 import Link from "next/link";
 import { ArrowRight, Bot, Zap, Shield, Sparkles, Database, Mail, BarChart3 } from "lucide-react";
 
-export const dynamic = "force-dynamic";
 
 export default function HomePage() {
   return (

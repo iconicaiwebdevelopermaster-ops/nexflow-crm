@@ -6,7 +6,6 @@ import { prisma } from "@/lib/prisma";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { PageHeader } from "@/components/layout/PageHeader";
 
-export const dynamic = "force-dynamic";
 
 export default async function KanbanPage() {
   const session = await auth();

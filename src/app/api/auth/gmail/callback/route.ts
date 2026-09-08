@@ -1,10 +1,11 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { NextRequest, NextResponse } from 'next/server';
 import { getOAuth2Client } from '@/lib/gmail-client';
 import { google } from 'googleapis';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 
-export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);

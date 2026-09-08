@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
@@ -9,7 +11,6 @@ import Link from 'next/link';
 import { Mail, CheckCircle2, AlertTriangle, ShieldCheck, Zap, Server } from 'lucide-react';
 import { SettingsForm } from '@/components/forms/SettingsForm';
 
-export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
   const session = await auth();

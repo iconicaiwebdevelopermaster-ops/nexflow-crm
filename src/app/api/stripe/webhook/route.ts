@@ -1,10 +1,11 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   const body = await req.text();

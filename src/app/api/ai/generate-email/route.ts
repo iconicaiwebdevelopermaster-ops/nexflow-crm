@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { NextRequest, NextResponse } from 'next/server';
 import { generatePersonalizedEmail } from '@/lib/ai-composer';
 import { auth } from '@/lib/auth';

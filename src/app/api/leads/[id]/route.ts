@@ -1,8 +1,9 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
 
-export const dynamic = "force-dynamic";
 
 const ALLOWED = new Set(["NEW", "CONTACTED", "REPLIED", "WON", "LOST"]);
 
