@@ -8,6 +8,29 @@ import { LeadStatus, EmailStatus, ActivityType } from '@prisma/client';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+function extractLeadIds(body: any): string[] {
+  const raw =
+    body?.leadIds ??
+    body?.ids ??
+    body?.selectedIds ??
+    body?.selectedLeadIds ??
+    body?.leads ??
+    body?.leadId ??
+    [];
+
+  if (Array.isArray(raw)) {
+    return raw
+      .map((x) => (typeof x === 'string' ? x : x?.id))
+      .filter((x): x is string => typeof x === 'string' && x.length > 0);
+  }
+
+  if (typeof raw === 'string' && raw.length > 0) {
+    return [raw];
+  }
+
+  return [];
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
@@ -16,7 +39,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized. Please login again.' }, { status: 401 });
     }
 
-    // Lookup user safely by email
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
     });
@@ -25,18 +47,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'User account not found.' }, { status: 401 });
     }
 
-    const body = await req.json();
-    const { leadIds, subject, body: emailBody, templateId } = body;
+    const body = await req.json().catch(() => ({}));
+    const leadIds = extractLeadIds(body);
+    const subject = body?.subject || body?.emailSubject || '';
+    const emailBody = body?.body || body?.emailBody || body?.message || body?.content || '';
+    const templateId = body?.templateId || null;
 
-    if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
-      return NextResponse.json({ error: 'No leads selected for bulk dispatch.' }, { status: 400 });
+    if (leadIds.length === 0) {
+      return NextResponse.json(
+        {
+          error: 'No lead IDs provided.',
+          hint: 'Send leadIds (array) in JSON body. Also accepts: ids, selectedIds, selectedLeadIds, leads.',
+          receivedKeys: Object.keys(body || {}),
+        },
+        { status: 400 }
+      );
     }
 
     if (!subject || !emailBody) {
-      return NextResponse.json({ error: 'Subject and email body are required.' }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: 'Subject and email body are required.',
+          receivedKeys: Object.keys(body || {}),
+        },
+        { status: 400 }
+      );
     }
 
-    // Fetch target leads owned by this user
     const leads = await prisma.lead.findMany({
       where: {
         id: { in: leadIds },
@@ -45,10 +82,12 @@ export async function POST(req: NextRequest) {
     });
 
     if (leads.length === 0) {
-      return NextResponse.json({ error: 'No valid leads found to send.' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'No valid leads found for your account with those IDs.' },
+        { status: 404 }
+      );
     }
 
-    // Check Sending Channel: Gmail OAuth vs Manual SMTP
     const gmailAccount = await prisma.gmailAccount.findFirst({
       where: { userId: user.id, isActive: true },
     });
@@ -58,7 +97,6 @@ export async function POST(req: NextRequest) {
     const errors: string[] = [];
 
     if (gmailAccount) {
-      // MODE 1: GMAIL OAUTH BULK DISPATCH
       const gmail = await getGmailClientForUser(user.id);
 
       for (const lead of leads) {
@@ -77,7 +115,7 @@ export async function POST(req: NextRequest) {
             'Content-Type: text/html; charset=utf-8',
             'Content-Transfer-Encoding: 7bit',
             '',
-            emailBody.replace(/\n/g, '<br/>'),
+            String(emailBody).replace(/\n/g, '<br/>'),
           ];
 
           const rawMessage = Buffer.from(messageParts.join('\r\n'))
@@ -91,13 +129,12 @@ export async function POST(req: NextRequest) {
             requestBody: { raw: rawMessage },
           });
 
-          // Log in Neon DB
           await prisma.$transaction([
             prisma.emailSent.create({
               data: {
                 userId: user.id,
                 leadId: lead.id,
-                templateId: templateId || null,
+                templateId,
                 subject,
                 body: emailBody,
                 gmailMessageId: res.data.id || '',
@@ -114,7 +151,7 @@ export async function POST(req: NextRequest) {
               data: {
                 leadId: lead.id,
                 type: ActivityType.EMAIL_SENT,
-                description: `Bulk Cold Email sent via Gmail OAuth: "${subject}"`,
+                description: `Bulk email via Gmail OAuth: "${subject}"`,
               },
             }),
           ]);
@@ -122,20 +159,17 @@ export async function POST(req: NextRequest) {
           successCount++;
         } catch (err: any) {
           failedCount++;
-          console.error(`Failed to send to ${lead.email}:`, err.message);
+          errors.push(`${lead.email}: ${err.message}`);
         }
       }
 
-      // Increment daily quota count
       if (successCount > 0) {
         await prisma.gmailAccount.update({
           where: { id: gmailAccount.id },
           data: { sentToday: { increment: successCount } },
         });
       }
-
     } else if (user.smtpUser && user.smtpPass) {
-      // MODE 2: MANUAL SMTP BULK DISPATCH
       const transporter = nodemailer.createTransport({
         host: user.smtpHost || 'smtp.gmail.com',
         port: user.smtpPort || 587,
@@ -152,7 +186,7 @@ export async function POST(req: NextRequest) {
             from: `"${user.name || 'NexFlow Outreach'}" <${user.smtpUser}>`,
             to: lead.email,
             subject,
-            html: emailBody.replace(/\n/g, '<br/>'),
+            html: String(emailBody).replace(/\n/g, '<br/>'),
           });
 
           await prisma.$transaction([
@@ -160,7 +194,7 @@ export async function POST(req: NextRequest) {
               data: {
                 userId: user.id,
                 leadId: lead.id,
-                templateId: templateId || null,
+                templateId,
                 subject,
                 body: emailBody,
                 gmailMessageId: info.messageId || '',
@@ -176,7 +210,7 @@ export async function POST(req: NextRequest) {
               data: {
                 leadId: lead.id,
                 type: ActivityType.EMAIL_SENT,
-                description: `Bulk Cold Email sent via Manual SMTP: "${subject}"`,
+                description: `Bulk email via SMTP: "${subject}"`,
               },
             }),
           ]);
@@ -184,12 +218,15 @@ export async function POST(req: NextRequest) {
           successCount++;
         } catch (err: any) {
           failedCount++;
-          console.error(`SMTP Bulk send error for ${lead.email}:`, err.message);
+          errors.push(`${lead.email}: ${err.message}`);
         }
       }
     } else {
       return NextResponse.json(
-        { error: 'No active sending channel. Please connect Gmail OAuth or save Manual SMTP credentials in Settings.' },
+        {
+          error:
+            'No active sending channel. Connect Gmail OAuth or save Manual SMTP in Settings first.',
+        },
         { status: 400 }
       );
     }
@@ -199,9 +236,9 @@ export async function POST(req: NextRequest) {
       message: `Bulk dispatch completed: ${successCount} sent, ${failedCount} failed.`,
       sentCount: successCount,
       failedCount,
+      processedLeadIds: leads.map((l) => l.id),
       errors,
     });
-
   } catch (error: any) {
     console.error('Bulk Email Route Error:', error);
     return NextResponse.json({ error: error?.message || 'Bulk sending failed.' }, { status: 500 });
