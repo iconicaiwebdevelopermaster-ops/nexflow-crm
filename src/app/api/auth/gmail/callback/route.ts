@@ -18,7 +18,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(new URL('/login', req.url));
     }
 
-    const oauth2Client = getOAuth2Client();
+    const origin = req.nextUrl.origin;
+    const dynamicRedirectUri = `${origin}/api/auth/gmail/callback`;
+
+    const oauth2Client = getOAuth2Client(dynamicRedirectUri);
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
 
@@ -53,7 +56,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.redirect(new URL('/settings?success=gmail_connected', req.url));
   } catch (error: any) {
-    console.error('Gmail OAuth Error:', error);
+    console.error('Gmail OAuth Callback Error:', error);
     return NextResponse.redirect(new URL('/settings?error=oauth_failed', req.url));
   }
 }

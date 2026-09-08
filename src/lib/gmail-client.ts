@@ -1,16 +1,20 @@
-﻿import { google } from 'googleapis';
+import { google } from 'googleapis';
 import { prisma } from '@/lib/prisma';
 
-export function getOAuth2Client() {
-  return new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/auth/gmail/callback'
-  );
+export function getOAuth2Client(customRedirectUri?: string) {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const redirectUri = customRedirectUri || process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/auth/gmail/callback';
+
+  if (!clientId || !clientSecret) {
+    throw new Error('GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is missing in environment variables.');
+  }
+
+  return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 }
 
-export function getAuthUrl() {
-  const oauth2Client = getOAuth2Client();
+export function getAuthUrl(customRedirectUri?: string) {
+  const oauth2Client = getOAuth2Client(customRedirectUri);
   return oauth2Client.generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
@@ -38,7 +42,6 @@ export async function getGmailClientForUser(userId: string) {
     expiry_date: account.expiryDate ? Number(account.expiryDate) : undefined,
   });
 
-  // Handle token refresh
   oauth2Client.on('tokens', async (tokens) => {
     await prisma.gmailAccount.update({
       where: { id: account.id },
