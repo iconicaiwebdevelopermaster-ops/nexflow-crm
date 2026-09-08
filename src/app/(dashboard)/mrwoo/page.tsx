@@ -10,12 +10,9 @@ import {
   Search,
   Mail,
   ShieldAlert,
-  Flame,
-  Globe,
-  Clock,
+  TrendingUp,
   CheckCircle2,
   Server,
-  TrendingUp,
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -27,32 +24,44 @@ export default async function MrwooAdminPage() {
     redirect('/login');
   }
 
-  // Security Check: Verify user has SUPER_ADMIN role
+  // Security Check: Verify user role in DB
   const currentUser = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { role: true, email: true },
   });
 
   if (currentUser?.role !== 'SUPER_ADMIN') {
-    // Block unauthorized access and redirect to normal dashboard
     redirect('/dashboard');
   }
 
-  // Fetch Aggregate Platform Statistics
-  const [
-    totalUsers,
-    totalLeads,
-    totalEmailsSent,
-    totalSearches,
-    usersList,
-    recentSearches,
-    recentEmails,
-  ] = await Promise.all([
-    prisma.user.count(),
-    prisma.lead.count(),
-    prisma.emailSent.count(),
-    prisma.scraperSearch.count(),
-    prisma.user.findMany({
+  // Safe query executions with fallbacks
+  let totalUsers = 0;
+  let totalLeads = 0;
+  let totalEmailsSent = 0;
+  let totalSearches = 0;
+  let usersList: any[] = [];
+  let recentSearches: any[] = [];
+  let recentEmails: any[] = [];
+
+  try {
+    totalUsers = await prisma.user.count();
+    totalLeads = await prisma.lead.count();
+    totalEmailsSent = await prisma.emailSent.count();
+
+    try {
+      totalSearches = await prisma.scraperSearch.count();
+      recentSearches = await prisma.scraperSearch.findMany({
+        take: 15,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { name: true, email: true } },
+        },
+      });
+    } catch (e) {
+      console.log('ScraperSearch table check pending:', e);
+    }
+
+    usersList = await prisma.user.findMany({
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
@@ -66,27 +75,22 @@ export default async function MrwooAdminPage() {
             leads: true,
             emailsSent: true,
             gmailAccounts: true,
-            scraperSearches: true,
           },
         },
       },
-    }),
-    prisma.scraperSearch.findMany({
-      take: 15,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        user: { select: { name: true, email: true } },
-      },
-    }),
-    prisma.emailSent.findMany({
+    });
+
+    recentEmails = await prisma.emailSent.findMany({
       take: 10,
       orderBy: { sentAt: 'desc' },
       include: {
         lead: { select: { name: true, email: true, company: true } },
         user: { select: { email: true } },
       },
-    }),
-  ]);
+    });
+  } catch (err) {
+    console.error('Mrwoo Stats Load Error:', err);
+  }
 
   return (
     <div className="space-y-6 pb-12 max-w-7xl">
@@ -99,7 +103,7 @@ export default async function MrwooAdminPage() {
         </Badge>
       </PageHeader>
 
-      {/* 1. TOP METRIC CARDS */}
+      {/* TOP METRIC CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4 bg-slate-900/60 border-slate-800">
           <div className="flex items-center justify-between">
@@ -148,7 +152,7 @@ export default async function MrwooAdminPage() {
         </Card>
       </div>
 
-      {/* 2. USER MANAGEMENT AUDIT TABLE */}
+      {/* USER MANAGEMENT AUDIT TABLE */}
       <Card className="p-5 bg-slate-900/60 border-slate-800">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -168,14 +172,13 @@ export default async function MrwooAdminPage() {
                 <th className="p-3">Role</th>
                 <th className="p-3">Leads Harvested</th>
                 <th className="p-3">Emails Sent</th>
-                <th className="p-3">Scraper Runs</th>
                 <th className="p-3">Channel Active</th>
                 <th className="p-3">Joined Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
               {usersList.map((u) => {
-                const hasOAuth = u._count.gmailAccounts > 0;
+                const hasOAuth = u._count?.gmailAccounts > 0;
                 const hasSmtp = Boolean(u.smtpUser);
                 return (
                   <tr key={u.id} className="hover:bg-slate-900/40 transition">
@@ -194,9 +197,8 @@ export default async function MrwooAdminPage() {
                         </Badge>
                       )}
                     </td>
-                    <td className="p-3 font-semibold text-blue-400">{u._count.leads}</td>
-                    <td className="p-3 font-semibold text-purple-400">{u._count.emailsSent}</td>
-                    <td className="p-3 font-semibold text-amber-400">{u._count.scraperSearches}</td>
+                    <td className="p-3 font-semibold text-blue-400">{u._count?.leads || 0}</td>
+                    <td className="p-3 font-semibold text-purple-400">{u._count?.emailsSent || 0}</td>
                     <td className="p-3">
                       {hasOAuth ? (
                         <span className="text-emerald-400 font-medium flex items-center gap-1">
@@ -221,7 +223,7 @@ export default async function MrwooAdminPage() {
         </div>
       </Card>
 
-      {/* 3. SCRAPER SEARCH HISTORY & RECENT OUTREACH */}
+      {/* SCRAPER SEARCH HISTORY & RECENT OUTREACH */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Scraper Searches Audit Log */}
         <Card className="p-5 bg-slate-900/60 border-slate-800">
@@ -229,7 +231,7 @@ export default async function MrwooAdminPage() {
             <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">
               <Search className="w-4 h-4 text-amber-400" /> Scraper Search Audit Log
             </h3>
-            <span className="text-xs text-slate-400">Last 15 queries</span>
+            <span className="text-xs text-slate-400">Recent queries</span>
           </div>
 
           {recentSearches.length === 0 ? (
@@ -246,8 +248,7 @@ export default async function MrwooAdminPage() {
                   <div>
                     <div className="font-semibold text-slate-200">{s.query}</div>
                     <div className="text-[11px] text-slate-400 mt-0.5">
-                      By <span className="text-blue-400">{s.user.email}</span> • Mode:{' '}
-                      <span className="text-slate-300 capitalize">{s.source}</span>
+                      By <span className="text-blue-400">{s.user?.email || 'User'}</span>
                     </div>
                   </div>
                   <div className="text-right">
