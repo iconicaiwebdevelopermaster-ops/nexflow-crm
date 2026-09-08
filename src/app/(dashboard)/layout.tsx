@@ -1,16 +1,31 @@
-import { Sidebar } from "@/components/layout/Sidebar";
-import { Navbar } from "@/components/layout/Navbar";
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { Sidebar } from '@/components/layout/Sidebar';
+import { Navbar } from '@/components/layout/Navbar';
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
+
+  let userRole = 'USER';
+  if (session?.user?.id) {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true },
+    });
+    if (dbUser?.role) {
+      userRole = dbUser.role;
+    }
+  }
+
   return (
     <div className="flex min-h-screen bg-[#070A12] text-slate-100">
       {/* Sidebar */}
       <div className="hidden md:flex sticky top-0 h-screen">
-        <Sidebar />
+        <Sidebar userRole={userRole} />
       </div>
 
       {/* Main Column */}

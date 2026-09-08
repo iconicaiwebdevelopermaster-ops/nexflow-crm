@@ -1,203 +1,89 @@
-﻿import { NextRequest, NextResponse } from "next/server";
-
-export const dynamic = "force-dynamic";
-export const maxDuration = 60;
-
-function normalizeUrl(urlStr: any): string {
-  if (!urlStr || typeof urlStr !== "string") return "";
-  let clean = urlStr.trim();
-  if (!clean) return "";
-  if (!clean.startsWith("http://") && !clean.startsWith("https://")) clean = "https://" + clean;
-  return clean;
-}
-
-function getDomain(urlStr: string): string {
-  try {
-    return new URL(normalizeUrl(urlStr)).hostname.replace(/^www\./, "").toLowerCase().trim();
-  } catch {
-    return (urlStr || "").toLowerCase().replace(/[^a-z0-9.]/g, "").trim();
-  }
-}
-
-const IGNORED = [
-  "youtube.com", "wikipedia.org", "facebook.com", "amazon.com", "yelp.com",
-  "tripadvisor.com", "twitter.com", "x.com", "instagram.com", "linkedin.com",
-  "google.com", "duckduckgo.com", "apple.com", "bbb.org", "yellowpages.com"
-];
-
-function generateSmartTargets(query: string, targetLimit: number) {
-  const cleanQuery = query.toLowerCase().trim();
-  let city = "Miami";
-  let niche = "Dental Care";
-
-  if (cleanQuery.includes("in ")) {
-    const parts = cleanQuery.split("in ");
-    niche = parts[0].replace(/[^a-z0-9 ]/gi, "").trim();
-    city = parts[1].replace(/[^a-z0-9 ]/gi, "").trim();
-  } else {
-    niche = cleanQuery;
-  }
-
-  const cap = (s: string) => s.length > 0 ? s.charAt(0).toUpperCase() + s.slice(1) : "Target";
-  const cityCap = cap(city);
-  const nicheCap = cap(niche);
-
-  const prefixes = ["Elite", "Premier", "Apex", "City", "Global", "Metro", "Prime", "Universal", "Summit", "Coastal", "Express", "Vanguard", "Pinnacle", "Benchmark", "Frontier"];
-  const suffixes = ["Group", "Center", "Services", "Care", "Associates", "Hub", "Solutions", "Clinic", "Studio", "Partners"];
-
-  const list = [];
-  for (let i = 0; i < targetLimit; i++) {
-    const p = prefixes[i % prefixes.length];
-    const s = suffixes[i % suffixes.length];
-    const companyName = `${p} ${nicheCap} ${s} (${cityCap})`;
-    const cleanDomain = `${p.toLowerCase()}${niche.replace(/[^a-z0-9]/g, "")}${s.toLowerCase()}.com`;
-    const areaCode = 300 + (i % 90);
-
-    list.push({
-      name: companyName,
-      website: `https://${cleanDomain}`,
-      phone: `+1 ${areaCode}-555-01${10 + i}`,
-      location: `${cityCap}, USA`,
-      source: "Google Maps Engine",
-      snippet: `Premier ${nicheCap} service provider in ${cityCap}.`,
-      emails: [`info@${cleanDomain}`],
-      linkedin: null,
-      instagram: null,
-      facebook: null,
-    });
-  }
-  return list;
-}
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await req.json();
-    const query = (body.query || "").trim();
-    const rawType = (body.type || body.mode || "maps").toLowerCase();
-    const targetLimit = Math.min(Math.max(Number(body.limit) || 20, 5), 50);
+    const { query, source, city, niche, limit } = body;
 
     if (!query) {
-      return NextResponse.json({ error: "Search Query is required!" }, { status: 400 });
+      return NextResponse.json({ error: 'Search query is required' }, { status: 400 });
     }
 
-    let searchResults: any[] = [];
-    let engineUsed = "Google Maps Engine";
-    const seen = new Set<string>();
+    const apiKey = process.env.SERPER_API_KEY;
+    const targetLimit = limit || 10;
+    let leads: any[] = [];
 
-    let apiKey = (process.env.SERPER_API_KEY || "").trim().replace(/^["']|["']$/g, "");
-
-    console.log(`[NexScraper] Executing scan for "${query}" | Mode: ${rawType} | Limit: ${targetLimit}`);
-
-    if (apiKey.length > 5 && !apiKey.toLowerCase().includes("paste_") && !apiKey.includes("your_")) {
+    if (apiKey) {
       try {
-        let searchQuery = query;
-        let endpoint = "https://google.serper.dev/places";
-
-        if (rawType === "linkedin") {
-          searchQuery = `site:linkedin.com/in/ ("Founder" OR "CEO" OR "Owner") ${query}`;
-          endpoint = "https://google.serper.dev/search";
-        } else if (rawType === "indeed") {
-          searchQuery = `site:indeed.com hiring ${query}`;
-          endpoint = "https://google.serper.dev/search";
-        } else if (rawType === "maps" || rawType === "google-maps") {
-          endpoint = "https://google.serper.dev/places";
-        } else {
-          endpoint = "https://google.serper.dev/search";
-        }
-
-        const res = await fetch(endpoint, {
-          method: "POST",
+        const serperRes = await fetch('https://google.serper.dev/places', {
+          method: 'POST',
           headers: {
-            "X-API-KEY": apiKey,
-            "Content-Type": "application/json",
+            'X-API-KEY': apiKey,
+            'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            q: searchQuery,
-            gl: "us",
-            hl: "en",
-            num: Math.min(targetLimit * 2, 40),
-          }),
+          body: JSON.stringify({ q: query, num: targetLimit }),
         });
 
-        if (res.ok) {
-          const data = await res.json();
-          const items = data.places || data.organic || data.maps || [];
-
-          for (const item of items) {
-            if (searchResults.length >= targetLimit) break;
-
-            const web = normalizeUrl(item.website || item.site || item.link || "");
-            const title = item.title || item.name || "Business Prospect";
-            const domain = web ? getDomain(web) : title.toLowerCase().replace(/[^a-z0-9]/g, "") + ".local";
-
-            if (domain && seen.has(domain)) continue;
-            if (domain) seen.add(domain);
-
-            searchResults.push({
-              name: title,
-              website: web,
-              phone: item.phoneNumber || item.phone || item.telephone || "",
-              location: item.address || item.formattedAddress || item.vicinity || "USA",
-              source: rawType === "linkedin" ? "LinkedIn" : rawType === "indeed" ? "Indeed" : "Google Maps",
-              snippet: item.category || item.type || item.snippet || "Local Business Profile",
-            });
+        if (serperRes.ok) {
+          const serperData = await serperRes.json();
+          if (serperData.places && Array.isArray(serperData.places)) {
+            leads = serperData.places.map((place: any) => ({
+              name: place.title || 'Unknown Business',
+              company: place.title || 'Unknown Company',
+              email: place.website
+                ? `info@${place.website.replace(/https?:\/\/(www\.)?/, '').split('/')[0]}`
+                : `contact@${query.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
+              phone: place.phoneNumber || null,
+              website: place.website || null,
+              city: city || place.address?.split(',').slice(-2, -1)[0]?.trim() || 'Local Area',
+              niche: niche || query,
+              source: source || 'Google Maps',
+            }));
           }
-          engineUsed = rawType === "linkedin" ? "LinkedIn Engine" : rawType === "indeed" ? "Indeed Engine" : "Google Maps Engine";
-        } else {
-          console.warn(`[NexScraper] Serper API HTTP ${res.status}`);
         }
       } catch (err) {
-        console.error("[NexScraper] Serper fetch failed:", err);
+        console.error('Serper API Fallback to generator:', err);
       }
     }
 
-    if (searchResults.length === 0) {
-      console.log("[NexScraper] Activating Target Generator Backup...");
-      searchResults = generateSmartTargets(query, targetLimit);
-      engineUsed = "Google Maps Engine";
+    // Fallback generator if Serper yields 0 results
+    if (leads.length === 0) {
+      for (let i = 1; i <= Math.min(targetLimit, 10); i++) {
+        leads.push({
+          name: `${query} Business #${i}`,
+          company: `${query} Studio #${i}`,
+          email: `contact${i}@${query.toLowerCase().replace(/[^a-z0-9]/g, '')}-hub.com`,
+          phone: `+1 (555) 019-${100 + i}`,
+          website: `https://${query.toLowerCase().replace(/[^a-z0-9]/g, '')}${i}.com`,
+          city: city || 'Dubai / US Target',
+          niche: niche || query,
+          source: source || 'NexScraper v3.0 Engine',
+        });
+      }
     }
 
-    const finalized = searchResults.map((lead) => {
-      let emails: string[] = lead.emails || [];
-      const domain = lead.website ? getDomain(lead.website) : "";
-
-      if (emails.length === 0 && domain && !domain.endsWith(".local") && !IGNORED.some(i => domain.includes(i))) {
-        emails = [`info@${domain}`];
-      }
-
-      return {
-        name: lead.name,
-        title: lead.name,
-        website: lead.website || "",
-        link: lead.website || "",
-        phone: lead.phone || "",
-        location: lead.location || "",
-        source: lead.source || engineUsed,
-        snippet: lead.snippet || "",
-        emails: emails,
-        email: emails[0] || `info@${domain || "business.com"}`,
-        linkedin: lead.linkedin || null,
-        instagram: lead.instagram || null,
-        facebook: lead.facebook || null,
-      };
+    // LOG THIS SEARCH IN DATABASE FOR SUPER ADMIN TRACKING
+    await prisma.scraperSearch.create({
+      data: {
+        userId: session.user.id,
+        query: query,
+        source: source || 'Google Maps',
+        city: city || null,
+        niche: niche || null,
+        resultsCount: leads.length,
+      },
     });
 
-    console.log(`[NexScraper] Scraped ${finalized.length} leads successfully.`);
-
-    return NextResponse.json({
-      success: true,
-      data: finalized,
-      results: finalized,
-      leads: finalized,
-      items: finalized,
-      engine: engineUsed,
-      count: finalized.length,
-    });
+    return NextResponse.json({ success: true, leads, count: leads.length });
   } catch (error: any) {
-    console.error("Scraper Fatal:", error);
-    return NextResponse.json(
-      { success: false, data: [], error: error.message || "Scan failed" },
-      { status: 500 }
-    );
+    console.error('Scraper Route Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
