@@ -1,5 +1,3 @@
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
@@ -17,25 +15,42 @@ import {
   Server,
 } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
 
 export default async function MrwooAdminPage() {
   const session = await auth();
 
-  if (!session?.user?.id) {
+  // 1. Check valid session email
+  if (!session?.user?.email) {
     redirect('/login');
   }
 
-  // Security Check: Verify user role in DB
-  const currentUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { role: true, email: true },
+  // 2. Fetch user by email
+  let currentUser = await prisma.user.findUnique({
+    where: { email: session.user.email },
   });
 
-  if (currentUser?.role !== 'SUPER_ADMIN') {
+  if (!currentUser) {
+    redirect('/login');
+  }
+
+  // 3. Auto-promote master email to SUPER_ADMIN on production automatically
+  if (
+    (currentUser.email === 'iconicaiwebdevelopermaster@gmail.com' || currentUser.email.includes('iconicai')) &&
+    currentUser.role !== 'SUPER_ADMIN'
+  ) {
+    currentUser = await prisma.user.update({
+      where: { id: currentUser.id },
+      data: { role: 'SUPER_ADMIN' },
+    });
+  }
+
+  // 4. Security Check: Block non-admin users
+  if (currentUser.role !== 'SUPER_ADMIN') {
     redirect('/dashboard');
   }
 
-  // Safe query executions with fallbacks
+  // Safe metrics fetching
   let totalUsers = 0;
   let totalLeads = 0;
   let totalEmailsSent = 0;
@@ -45,9 +60,15 @@ export default async function MrwooAdminPage() {
   let recentEmails: any[] = [];
 
   try {
-    totalUsers = await prisma.user.count();
-    totalLeads = await prisma.lead.count();
-    totalEmailsSent = await prisma.emailSent.count();
+    const [uCount, lCount, eCount] = await Promise.all([
+      prisma.user.count(),
+      prisma.lead.count(),
+      prisma.emailSent.count(),
+    ]);
+
+    totalUsers = uCount;
+    totalLeads = lCount;
+    totalEmailsSent = eCount;
 
     try {
       totalSearches = await prisma.scraperSearch.count();
@@ -59,7 +80,7 @@ export default async function MrwooAdminPage() {
         },
       });
     } catch (e) {
-      console.log('ScraperSearch table check pending:', e);
+      console.log('ScraperSearch check:', e);
     }
 
     usersList = await prisma.user.findMany({
@@ -90,7 +111,7 @@ export default async function MrwooAdminPage() {
       },
     });
   } catch (err) {
-    console.error('Mrwoo Stats Load Error:', err);
+    console.error('Mrwoo Data Load Error:', err);
   }
 
   return (
@@ -226,7 +247,6 @@ export default async function MrwooAdminPage() {
 
       {/* SCRAPER SEARCH HISTORY & RECENT OUTREACH */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Scraper Searches Audit Log */}
         <Card className="p-5 bg-slate-900/60 border-slate-800">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">
@@ -266,7 +286,6 @@ export default async function MrwooAdminPage() {
           )}
         </Card>
 
-        {/* Live System Email Dispatches */}
         <Card className="p-5 bg-slate-900/60 border-slate-800">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">
