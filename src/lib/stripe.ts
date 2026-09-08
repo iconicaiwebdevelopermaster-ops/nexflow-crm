@@ -1,17 +1,18 @@
-﻿import Stripe from "stripe";
+import Stripe from 'stripe';
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("STRIPE_SECRET_KEY is not set in .env");
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+
+export const stripe = stripeSecretKey
+  ? new Stripe(stripeSecretKey, {
+      apiVersion: '2023-10-16' as any,
+    })
+  : null;
+
+export function getStripeInstance() {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error('STRIPE_SECRET_KEY is missing from environment variables.');
+  }
+  return new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: '2023-10-16' as any,
+  });
 }
-
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2024-12-18.acacia",
-  typescript: true,
-});
-
-// Price IDs — Replace with your actual Stripe Price IDs
-export const STRIPE_PRICES = {
-  starter: process.env.STRIPE_PRICE_STARTER || "price_starter_xxx",
-  pro: process.env.STRIPE_PRICE_PRO || "price_pro_xxx",
-  enterprise: process.env.STRIPE_PRICE_ENTERPRISE || "price_enterprise_xxx",
-};
