@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Navbar } from '@/components/layout/Navbar';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function DashboardLayout({
   children,
@@ -23,6 +25,9 @@ export default async function DashboardLayout({
       }
     }
   } catch (err) {
+    if (err && (err.digest === 'DYNAMIC_SERVER_USAGE' || (err.message && err.message.includes('Dynamic server usage')))) {
+      throw err;
+    }
     console.error('Layout Auth Session Error:', err);
   }
 

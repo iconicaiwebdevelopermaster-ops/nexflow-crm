@@ -13,14 +13,9 @@ import {
   CheckSquare,
   Settings,
   Flame,
-  ShieldAlert,
 } from 'lucide-react';
 
-interface SidebarProps {
-  userRole?: string;
-}
-
-export function Sidebar({ userRole }: SidebarProps) {
+export function Sidebar({ userRole }: { userRole?: string }) {
   const pathname = usePathname();
 
   const navItems = [
@@ -37,22 +32,16 @@ export function Sidebar({ userRole }: SidebarProps) {
   return (
     <aside className="w-60 bg-[#050815] border-r border-slate-800/80 h-full flex flex-col justify-between p-3 select-none">
       <div className="space-y-4">
-        {/* Brand */}
         <Link href="/dashboard" className="flex items-center gap-2.5 px-2 pt-1">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/20">
             <Flame className="w-4 h-4 text-white fill-white" />
           </div>
           <div>
-            <span className="font-bold text-[15px] text-slate-100 tracking-tight leading-none">
-              NEXFLOW
-            </span>
-            <span className="text-[9px] block font-mono text-blue-400 font-semibold leading-none mt-0.5">
-              OUTREACH CRM
-            </span>
+            <span className="font-bold text-[15px] text-slate-100 tracking-tight leading-none">NEXFLOW</span>
+            <span className="text-[9px] block font-mono text-blue-400 font-semibold leading-none mt-0.5">OUTREACH CRM</span>
           </div>
         </Link>
 
-        {/* Navigation */}
         <nav className="space-y-0.5">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -82,37 +71,12 @@ export function Sidebar({ userRole }: SidebarProps) {
               </Link>
             );
           })}
-
-          {/* SECRET SUPER ADMIN LINK (ONLY VISIBLE TO SUPER_ADMIN) */}
-          {userRole === 'SUPER_ADMIN' && (
-            <div className="pt-3 mt-3 border-t border-slate-800/80">
-              <Link
-                href="/mrwoo"
-                className={`flex items-center justify-between px-2.5 py-2 rounded-lg text-[13px] font-medium transition ${
-                  pathname === '/mrwoo'
-                    ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                    : 'text-red-400/80 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <ShieldAlert className="w-4 h-4 text-red-400" />
-                  <span>Mrwoo Console</span>
-                </div>
-                <span className="text-[9px] font-bold bg-red-500/20 text-red-300 border border-red-500/30 px-1.5 py-0.5 rounded-full">
-                  ADMIN
-                </span>
-              </Link>
-            </div>
-          )}
         </nav>
       </div>
 
-      {/* Footer */}
       <div className="p-2.5 bg-slate-900/50 border border-slate-800/60 rounded-xl text-[11px] text-slate-400">
         <div className="font-medium text-slate-300">NexFlow Engine v4.0</div>
-        <div className="text-[10px] text-slate-500 mt-0.5">
-          {userRole === 'SUPER_ADMIN' ? '👑 Super Admin Active' : 'Neon DB • Active'}
-        </div>
+        <div className="text-[10px] text-slate-500 mt-0.5">Neon DB • Outreach Active</div>
       </div>
     </aside>
   );
