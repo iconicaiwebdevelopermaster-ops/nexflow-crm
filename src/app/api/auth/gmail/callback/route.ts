@@ -4,6 +4,8 @@ import { google } from 'googleapis';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get('code');
@@ -19,9 +21,9 @@ export async function GET(req: NextRequest) {
     }
 
     const origin = req.nextUrl.origin;
-    const dynamicRedirectUri = `${origin}/api/auth/gmail/callback`;
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${origin}/api/auth/gmail/callback`;
 
-    const oauth2Client = getOAuth2Client(dynamicRedirectUri);
+    const oauth2Client = getOAuth2Client(redirectUri);
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
 
