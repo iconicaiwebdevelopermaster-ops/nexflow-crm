@@ -1,5 +1,4 @@
-"use client";
-
+'use client';
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Users,
@@ -238,13 +237,13 @@ export default function LeadsPage() {
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center gap-1 text-cyan-400 font-mono">
                           <Mail className="h-3 w-3" />
-                          {lead.email || "—"}
+                          {lead.email || "â€”"}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center gap-1 text-emerald-400 font-mono">
                           <Phone className="h-3 w-3" />
-                          {lead.phone || "—"}
+                          {lead.phone || "â€”"}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -252,7 +251,7 @@ export default function LeadsPage() {
                           {st}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-slate-400">{lead.source || "—"}</td>
+                      <td className="px-4 py-3 text-slate-400">{lead.source || "â€”"}</td>
                       <td className="px-4 py-3 text-right">
                         <button
                           type="button"

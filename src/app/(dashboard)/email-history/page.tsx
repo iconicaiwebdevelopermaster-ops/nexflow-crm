@@ -1,5 +1,4 @@
-﻿"use client";
-
+'use client';
 import React, { useEffect, useState } from "react";
 import { History, Mail, RefreshCw, Building2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";

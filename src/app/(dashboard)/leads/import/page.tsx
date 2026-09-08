@@ -1,5 +1,4 @@
-"use client";
-
+'use client';
 import { useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -126,7 +125,7 @@ export default function CSVImportPage() {
           </div>
           {csvString && (
             <span className="text-[10px] text-emerald-400 block font-mono">
-              ✓ CSV loaded successfully, ready to push.
+              âœ“ CSV loaded successfully, ready to push.
             </span>
           )}
         </div>

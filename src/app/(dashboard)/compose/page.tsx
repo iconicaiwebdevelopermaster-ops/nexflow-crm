@@ -1,5 +1,4 @@
-"use client";
-
+'use client';
 import React, { useEffect, useState } from "react";
 import {
   Send,
@@ -193,7 +192,7 @@ export default function ComposePage() {
       if (!res.ok) throw new Error(data.error || "Batch campaign failed");
 
       toast({
-        title: "🚀 Campaign Executed!",
+        title: "ðŸš€ Campaign Executed!",
         description: data.message || `Dispatched outreach to ${data.sent} prospects!`,
       });
     } catch (err: any) {
@@ -277,7 +276,7 @@ export default function ComposePage() {
                   >
                     {leads.map((lead) => (
                       <option key={lead.id} value={lead.id}>
-                        {lead.name} ({lead.company || lead.name}) — {lead.email || "No email"}
+                        {lead.name} ({lead.company || lead.name}) â€” {lead.email || "No email"}
                       </option>
                     ))}
                   </select>
@@ -427,7 +426,7 @@ export default function ComposePage() {
                 </>
               ) : (
                 <>
-                  <Rocket className="h-4 w-4 text-amber-400" /> Launch Batch Blast to {selectedBulkIds.length} Prospects 🚀
+                  <Rocket className="h-4 w-4 text-amber-400" /> Launch Batch Blast to {selectedBulkIds.length} Prospects ðŸš€
                 </>
               )}
             </Button>

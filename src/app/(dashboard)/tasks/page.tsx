@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { PageHeader } from "@/components/layout/PageHeader";
 import { TaskList } from "@/components/tasks/TaskList";
 import { auth } from "@/lib/auth";

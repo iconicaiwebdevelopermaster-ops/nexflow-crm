@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { PageHeader } from "@/components/layout/PageHeader";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
