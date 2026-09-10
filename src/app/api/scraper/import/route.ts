@@ -1,62 +1,74 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import { LeadStatus } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
     const session = await auth();
 
     if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized. Please login again.' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized. Please log in.' }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+    // Resolve User by Email
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: session.user.email, mode: 'insensitive' } }
     });
 
     if (!user) {
-      return NextResponse.json({ error: 'User account not found.' }, { status: 401 });
+      return NextResponse.json({ error: 'User account not found' }, { status: 404 });
     }
 
-    const body = await req.json().catch(() => ({}));
-    const rawLeads = body?.leads || body?.selectedLeads || body?.data || (Array.isArray(body) ? body : []);
+    const body = await req.json();
+    const leadsToImport = body.leads || body.selectedLeads || [];
 
-    if (!Array.isArray(rawLeads) || rawLeads.length === 0) {
-      return NextResponse.json({ error: 'No scraped leads provided to import.' }, { status: 400 });
+    if (!Array.isArray(leadsToImport) || leadsToImport.length === 0) {
+      return NextResponse.json({ error: 'No valid leads provided for import' }, { status: 400 });
     }
 
-    // Format leads for Prisma bulk insertion
-    const validLeads = rawLeads.map((l: any) => ({
-      name: l.name || l.company || 'Scraped Prospect',
-      email: l.email || `contact@${(l.company || 'business').toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
-      company: l.company || l.name || null,
-      phone: l.phone || null,
-      website: l.website || null,
-      city: l.city || null,
-      niche: l.niche || null,
-      source: l.source || 'NexScraper v3.0 Engine',
-      status: LeadStatus.NEW,
-      userId: user.id,
-    }));
+    let importedCount = 0;
 
-    // Perform bulk create in Neon DB
-    const created = await prisma.lead.createMany({
-      data: validLeads,
-      skipDuplicates: true,
-    });
+    for (const lead of leadsToImport) {
+      if (!lead.email) continue;
+
+      try {
+        const created = await prisma.lead.create({
+          data: {
+            userId: user.id,
+            name: lead.name || 'Unknown Contact',
+            company: lead.company || 'Business Entity',
+            email: lead.email.toLowerCase().trim(),
+            phone: lead.phone || null,
+            website: lead.website || null,
+            city: lead.city || null,
+            niche: lead.niche || null,
+            status: 'NEW'
+          }
+        });
+
+        // Add Activity Log
+        await prisma.activity.create({
+          data: {
+            leadId: created.id,
+            type: 'NOTE_ADDED',
+            title: `Lead imported via NexScraper (${lead.source || 'Engine'})`
+          }
+        });
+
+        importedCount++;
+      } catch (duplicateErr) {
+        // Skip duplicate email silently
+      }
+    }
 
     return NextResponse.json({
       success: true,
-      message: `Successfully imported ${created.count} scraped leads to your CRM!`,
-      count: created.count,
+      count: importedCount,
+      message: `Successfully imported ${importedCount} leads to CRM`
     });
-
   } catch (error: any) {
-    console.error('Scraper Import API Error:', error);
-    return NextResponse.json({ error: error?.message || 'Failed to import scraped leads.' }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
