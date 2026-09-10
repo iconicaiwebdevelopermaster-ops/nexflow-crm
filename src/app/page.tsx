@@ -4,16 +4,12 @@ import {
   Zap, 
   Search, 
   Mail, 
-  Bot, 
   CheckCircle2, 
   ArrowRight, 
   Database, 
   Sparkles, 
-  ShieldCheck, 
   Flame,
-  Globe,
-  Layers,
-  HelpCircle
+  Globe
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -39,7 +35,6 @@ export default function LandingPage() {
             <a href="#scraper" className="hover:text-white transition-colors">4-Source Scraper</a>
             <a href="#comparison" className="hover:text-white transition-colors">Comparison</a>
             <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
-            <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
           </div>
 
           <div className="flex items-center gap-4">
@@ -96,7 +91,7 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          {/* Social Proof Stats */}
+          {/* Stats Bar */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto pt-8 border-t border-white/5 text-left">
             <div className="p-4 rounded-xl bg-[#050815]/60 border border-white/5 backdrop-blur-sm">
               <div className="text-2xl font-bold text-white mb-1">4 Sources</div>
@@ -289,7 +284,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── FOOTER ─── */}
+      {/* ─── CLEAN FOOTER (NO SECRET ADMIN LINK) ─── */}
       <footer className="border-t border-white/5 py-12 px-6 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 font-bold text-slate-300">
@@ -299,7 +294,7 @@ export default function LandingPage() {
           <div>© {new Date().getFullYear()} NexPulseLabs Inc. All rights reserved.</div>
           <div className="flex items-center gap-6">
             <Link href="/login" className="hover:text-slate-300 transition-colors">Sign In</Link>
-            <Link href="/mrwoo" className="hover:text-slate-300 transition-colors">Admin Gateway</Link>
+            <Link href="/signup" className="hover:text-slate-300 transition-colors">Create Account</Link>
           </div>
         </div>
       </footer>
