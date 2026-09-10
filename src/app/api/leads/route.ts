@@ -1,55 +1,80 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { LeadStatus } from '@prisma/client';
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
-import { prisma } from "@/lib/prisma";
-
 
 export async function GET(req: NextRequest) {
   try {
-    const token = await getToken({
-      req,
-      secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
+    const session = await auth();
+
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
     });
 
-    if (!token?.sub && !token?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    let userId = (token as any).sub as string | undefined;
-    if (!userId && token.email) {
-      const u = await prisma.user.findFirst({
-        where: { email: String(token.email) },
-        select: { id: true },
-      });
-      userId = u?.id;
-    }
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(req.url);
-    const status = searchParams.get("status");
-    const q = searchParams.get("q") || searchParams.get("search");
-
-    const where: any = { userId };
-    if (status && status !== "ALL") where.status = status;
-    if (q) {
-      where.OR = [
-        { name: { contains: q, mode: "insensitive" } },
-        { email: { contains: q, mode: "insensitive" } },
-        { company: { contains: q, mode: "insensitive" } },
-      ];
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const leads = await prisma.lead.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json({ success: true, leads, data: leads, count: leads.length });
+    return NextResponse.json({ success: true, leads });
   } catch (error: any) {
-    console.error("LEADS GET ERROR:", error);
-    return NextResponse.json({ error: error.message || "Failed to load leads" }, { status: 500 });
+    console.error('GET /api/leads error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const body = await req.json();
+    const { name, email, company, phone, website, city, niche, notes, status } = body;
+
+    if (!name || !email) {
+      return NextResponse.json({ error: 'Name and Email are required' }, { status: 400 });
+    }
+
+    const newLead = await prisma.lead.create({
+      data: {
+        name,
+        email,
+        company: company || null,
+        phone: phone || null,
+        website: website || null,
+        city: city || null,
+        niche: niche || null,
+        notes: notes || null,
+        status: (status as LeadStatus) || LeadStatus.NEW,
+        userId: user.id,
+      },
+    });
+
+    return NextResponse.json({ success: true, lead: newLead });
+  } catch (error: any) {
+    console.error('POST /api/leads error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

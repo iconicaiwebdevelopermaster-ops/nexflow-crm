@@ -1,159 +1,276 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { LeadStatusBadge } from "./LeadStatusBadge";
-import { LeadStatus } from "@/types";
-import { formatDate } from "@/lib/utils";
-import { Search, Mail, ExternalLink, Trash2, Eye } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import React, { useState } from 'react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { LeadStatusBadge } from '@/components/leads/LeadStatusBadge';
+import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
+import {
+  Search,
+  Mail,
+  Trash2,
+  Globe,
+  Phone,
+  Building2,
+  ExternalLink,
+  CheckSquare,
+  Square,
+  Sparkles,
+} from 'lucide-react';
 
-export function LeadTable({ initialLeads }: { initialLeads: any[] }) {
-  const router = useRouter();
-  const [leads, setLeads] = useState(initialLeads);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ALL");
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+export function LeadTable({ initialLeads = [] }: { initialLeads: any[] }) {
+  const [leads, setLeads] = useState<any[]>(initialLeads);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [deleting, setDeleting] = useState(false);
+  const { toast } = useToast();
 
   const filteredLeads = leads.filter((lead) => {
-    const matchesSearch =
-      lead.name.toLowerCase().includes(search.toLowerCase()) ||
-      lead.email.toLowerCase().includes(search.toLowerCase()) ||
-      (lead.company && lead.company.toLowerCase().includes(search.toLowerCase()));
-
-    const matchesStatus = statusFilter === "ALL" || lead.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const term = searchTerm.toLowerCase();
+    return (
+      lead.name?.toLowerCase().includes(term) ||
+      lead.email?.toLowerCase().includes(term) ||
+      lead.company?.toLowerCase().includes(term) ||
+      lead.city?.toLowerCase().includes(term) ||
+      lead.status?.toLowerCase().includes(term)
+    );
   });
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this lead?")) return;
-    setDeletingId(id);
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredLeads.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredLeads.map((l) => l.id));
+    }
+  };
+
+  const toggleSelectOne = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleDeleteLead = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this lead?')) return;
 
     try {
-      const res = await fetch(`/api/leads/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        setLeads((prev) => prev.filter((l) => l.id !== id));
-        router.refresh();
-      }
-    } catch (err) {
-      console.error(err);
+      const res = await fetch('/api/leads/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'DELETE', leadIds: [id] }),
+      });
+
+      if (!res.ok) throw new Error('Failed to delete lead');
+
+      setLeads((prev) => prev.filter((l) => l.id !== id));
+      setSelectedIds((prev) => prev.filter((item) => item !== id));
+
+      toast({
+        title: 'Lead Deleted',
+        description: 'Selected lead removed from your database.',
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Delete Failed',
+        description: err.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`Are you sure you want to delete ${selectedIds.length} selected leads?`)) return;
+
+    setDeleting(true);
+    try {
+      const res = await fetch('/api/leads/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'DELETE', leadIds: selectedIds }),
+      });
+
+      if (!res.ok) throw new Error('Failed to bulk delete leads');
+
+      setLeads((prev) => prev.filter((l) => !selectedIds.includes(l.id)));
+      setSelectedIds([]);
+
+      toast({
+        title: 'Bulk Delete Complete',
+        description: 'Selected leads successfully deleted.',
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Bulk Delete Error',
+        description: err.message,
+        variant: 'destructive',
+      });
     } finally {
-      setDeletingId(null);
+      setDeleting(false);
     }
   };
 
   return (
     <div className="space-y-4">
-      {/* Search & Filter Bar */}
+      {/* SEARCH AND CONTROLS BAR */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
           <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search leads by name, email, company..."
-            className="pl-9 bg-[#0E131F] border-slate-800 text-xs"
+            className="pl-9 bg-slate-950 border-slate-800 text-xs text-slate-100"
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-9 rounded-lg border border-slate-800 bg-[#0E131F] px-3 text-xs text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="NEW">New</option>
-            <option value="CONTACTED">Contacted</option>
-            <option value="REPLIED">Replied</option>
-            <option value="WON">Won</option>
-            <option value="LOST">Lost</option>
-          </select>
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          {selectedIds.length > 0 && (
+            <>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkDelete}
+                disabled={deleting}
+                className="text-xs h-9 px-3"
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Delete ({selectedIds.length})
+              </Button>
+
+              <Button size="sm" className="bg-purple-600 hover:bg-purple-500 text-white text-xs h-9 px-3" asChild>
+                <Link href="/compose">
+                  <Sparkles className="w-3.5 h-3.5 mr-1.5" /> Campaign ({selectedIds.length})
+                </Link>
+              </Button>
+            </>
+          )}
+
+          <Badge variant="outline" className="border-slate-800 text-slate-400 text-xs px-3 py-1.5 font-mono">
+            {filteredLeads.length} Leads
+          </Badge>
         </div>
       </div>
 
-      {/* Table Container */}
-      <div className="rounded-xl border border-slate-800 bg-[#0E131F] overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-900/80 border-b border-slate-800 text-slate-400 font-medium">
-              <tr>
-                <th className="p-3.5 pl-4">Lead Name</th>
-                <th className="p-3.5">Company</th>
-                <th className="p-3.5">Status</th>
-                <th className="p-3.5">Emails Sent</th>
-                <th className="p-3.5">Added Date</th>
-                <th className="p-3.5 pr-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 text-slate-300">
-              {filteredLeads.length === 0 ? (
+      {/* LEADS TABLE */}
+      <Card className="p-0 bg-slate-900/60 border-slate-800 overflow-hidden">
+        {filteredLeads.length === 0 ? (
+          <div className="py-16 text-center text-xs text-slate-500 space-y-2">
+            <div>No leads found matching your criteria.</div>
+            <div>Scrape new B2B leads from the Lead Scraper engine.</div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-300">
+              <thead className="bg-slate-950/80 text-slate-400 uppercase font-mono text-[10px] border-b border-slate-800">
                 <tr>
-                  <td colSpan={6} className="text-center py-10 text-slate-500">
-                    No leads found matching your criteria.
-                  </td>
-                </tr>
-              ) : (
-                filteredLeads.map((lead) => (
-                  <tr key={lead.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="p-3.5 pl-4">
-                      <Link href={`/leads/${lead.id}`} className="font-semibold text-white hover:text-blue-400 block">
-                        {lead.name}
-                      </Link>
-                      <span className="text-[11px] text-slate-500 font-mono">{lead.email}</span>
-                    </td>
-                    <td className="p-3.5">
-                      <span className="text-slate-200">{lead.company || "—"}</span>
-                      {lead.website && (
-                        <a
-                          href={lead.website.startsWith("http") ? lead.website : `https://${lead.website}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-1 text-[11px] text-blue-400 hover:underline mt-0.5"
-                        >
-                          Visit <ExternalLink className="w-2.5 h-2.5" />
-                        </a>
+                  <th className="p-3.5 w-10">
+                    <button onClick={toggleSelectAll} className="flex items-center">
+                      {selectedIds.length === filteredLeads.length && filteredLeads.length > 0 ? (
+                        <CheckSquare className="w-4 h-4 text-blue-400" />
+                      ) : (
+                        <Square className="w-4 h-4 text-slate-600" />
                       )}
-                    </td>
-                    <td className="p-3.5">
-                      <LeadStatusBadge status={lead.status as LeadStatus} />
-                    </td>
-                    <td className="p-3.5">
-                      <span className="text-slate-400 font-mono">{lead._count?.emailsSent || 0}</span>
-                    </td>
-                    <td className="p-3.5 text-slate-400">
-                      {formatDate(lead.createdAt)}
-                    </td>
-                    <td className="p-3.5 pr-4 text-right space-x-1">
-                      <Link href={`/emails/compose?leadId=${lead.id}`}>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-blue-400">
-                          <Mail className="w-3.5 h-3.5" />
-                        </Button>
-                      </Link>
-                      <Link href={`/leads/${lead.id}`}>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-white">
-                          <Eye className="w-3.5 h-3.5" />
-                        </Button>
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={deletingId === lead.id}
-                        onClick={() => handleDelete(lead.id)}
-                        className="h-7 w-7 p-0 text-slate-400 hover:text-red-400"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                    </button>
+                  </th>
+                  <th className="p-3.5">Lead Prospect</th>
+                  <th className="p-3.5">Company & Website</th>
+                  <th className="p-3.5">Status</th>
+                  <th className="p-3.5">Source</th>
+                  <th className="p-3.5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60">
+                {filteredLeads.map((lead) => {
+                  const isSelected = selectedIds.includes(lead.id);
+                  return (
+                    <tr
+                      key={lead.id}
+                      className={`hover:bg-slate-900/40 transition ${
+                        isSelected ? 'bg-blue-600/5' : ''
+                      }`}
+                    >
+                      <td className="p-3.5">
+                        <button onClick={() => toggleSelectOne(lead.id)} className="flex items-center">
+                          {isSelected ? (
+                            <CheckSquare className="w-4 h-4 text-blue-400" />
+                          ) : (
+                            <Square className="w-4 h-4 text-slate-600" />
+                          )}
+                        </button>
+                      </td>
+
+                      <td className="p-3.5">
+                        <div className="font-semibold text-slate-100 text-sm">{lead.name}</div>
+                        <div className="text-[11px] text-blue-400 flex items-center gap-1 mt-0.5 font-mono">
+                          <Mail className="w-3 h-3 text-slate-500" /> {lead.email}
+                        </div>
+                        {lead.phone && (
+                          <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                            <Phone className="w-3 h-3 text-slate-600" /> {lead.phone}
+                          </div>
+                        )}
+                      </td>
+
+                      <td className="p-3.5">
+                        <div className="text-slate-200 font-medium flex items-center gap-1">
+                          <Building2 className="w-3.5 h-3.5 text-slate-500" />
+                          {lead.company || 'N/A'}
+                        </div>
+                        {lead.website && (
+                          <a
+                            href={lead.website.startsWith('http') ? lead.website : `https://${lead.website}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[11px] text-slate-400 hover:text-blue-400 flex items-center gap-1 mt-0.5 truncate max-w-[200px]"
+                          >
+                            <Globe className="w-3 h-3 text-slate-600" /> {lead.website}
+                          </a>
+                        )}
+                      </td>
+
+                      <td className="p-3.5">
+                        <LeadStatusBadge status={lead.status} />
+                      </td>
+
+                      <td className="p-3.5">
+                        <Badge variant="outline" className="border-slate-800 text-slate-400 text-[10px]">
+                          {lead.source || 'Scraper'}
+                        </Badge>
+                      </td>
+
+                      <td className="p-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-slate-400 hover:text-blue-400"
+                            asChild
+                          >
+                            <Link href="/compose">
+                              <Mail className="w-4 h-4" />
+                            </Link>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteLead(lead.id)}
+                            className="h-8 w-8 p-0 text-slate-500 hover:text-rose-400"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
