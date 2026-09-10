@@ -72,7 +72,7 @@ export default function ScraperPage() {
       if (data.results && data.results.length > 0) {
         setResults(data.results);
         setSelectedIds(new Set(data.results.map((_: any, idx: number) => idx)));
-        showToast(`Harvested ${data.results.length} verified B2B leads with working websites!`);
+        showToast(`Harvested ${data.results.length} real working business leads!`);
       } else {
         showToast('No leads found.', 'error');
       }
@@ -141,13 +141,13 @@ export default function ScraperPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold text-white tracking-tight">NexScraper Engine v12.0</h1>
+            <h1 className="text-2xl font-bold text-white tracking-tight">NexScraper Engine v13.0</h1>
             <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 uppercase tracking-wide flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Real Operating Websites Active
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Working Websites Only
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Real B2B entities with direct clickable websites and active contact emails.
+            Zero fake domains. All returned leads feature live, registered and openable websites.
           </p>
         </div>
 
@@ -234,9 +234,8 @@ export default function ScraperPage() {
                 className="w-full px-4 py-2.5 bg-[#03050c] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500/50"
               >
                 <option value={10}>10 Verified Leads</option>
+                <option value={15}>15 Verified Leads</option>
                 <option value={20}>20 Verified Leads</option>
-                <option value={30}>30 Verified Leads</option>
-                <option value={50}>50 Deep Leads</option>
               </select>
             </div>
           </div>
@@ -244,7 +243,7 @@ export default function ScraperPage() {
           <div className="flex items-center justify-between pt-2">
             <div className="flex items-center gap-2 text-xs text-slate-400">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Real Operating Website Harvester Active</span>
+              <span>Only entities with active operating websites returned</span>
             </div>
 
             <button
@@ -318,7 +317,7 @@ export default function ScraperPage() {
                           target="_blank" 
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="text-cyan-400 hover:underline flex items-center gap-1 truncate font-medium"
+                          className="text-cyan-400 hover:underline flex items-center gap-1 truncate font-semibold"
                         >
                           {lead.website.replace('https://', '').replace('http://', '').replace('www.', '')}
                           <ExternalLink className="w-3 h-3 inline flex-shrink-0" />
