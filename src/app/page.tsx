@@ -8,11 +8,12 @@ import {
   CheckCircle2, 
   ArrowRight, 
   Database, 
-  Inbox, 
   Sparkles, 
   ShieldCheck, 
-  Clock, 
-  Flame
+  Flame,
+  Globe,
+  Layers,
+  HelpCircle
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -21,7 +22,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-[#03050c] text-slate-100 selection:bg-indigo-500/30 selection:text-indigo-200">
       
-      {/* ─── NAVIGATION BAR ─── */}
+      {/* ─── NAVIGATION ─── */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-[#03050c]/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -38,6 +39,7 @@ export default function LandingPage() {
             <a href="#scraper" className="hover:text-white transition-colors">4-Source Scraper</a>
             <a href="#comparison" className="hover:text-white transition-colors">Comparison</a>
             <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
+            <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
           </div>
 
           <div className="flex items-center gap-4">
@@ -59,7 +61,6 @@ export default function LandingPage() {
 
       {/* ─── HERO SECTION ─── */}
       <section className="relative pt-36 pb-20 px-6 overflow-hidden">
-        {/* Ambient Glows */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-indigo-500/20 blur-[140px] rounded-full pointer-events-none" />
         <div className="absolute top-1/3 left-1/3 w-[400px] h-[250px] bg-cyan-500/15 blur-[120px] rounded-full pointer-events-none" />
 
@@ -77,7 +78,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-lg sm:text-xl text-slate-400 max-w-3xl mx-auto mb-10 leading-relaxed">
-            Scrape B2B leads from Google Maps, LinkedIn & Web search. Write hyper-personalized 1-to-1 emails with GPT-4o, and dispatch inbox-grade campaigns via Gmail OAuth.
+            Scrape verified B2B leads from Google Maps, LinkedIn & Web search. Write hyper-personalized 1-to-1 emails with GPT-4o, and dispatch inbox-grade campaigns via Gmail OAuth.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
@@ -88,14 +89,14 @@ export default function LandingPage() {
               Start Generating Leads Free <ArrowRight className="w-5 h-5" />
             </Link>
             <Link 
-              href="/dashboard" 
+              href="/login" 
               className="w-full sm:w-auto px-8 py-4 rounded-xl border border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10 text-slate-300 font-medium transition-all text-base"
             >
-              Explore Live Workspace
+              Explore Workspace Demo
             </Link>
           </div>
 
-          {/* Social Proof Badges */}
+          {/* Social Proof Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto pt-8 border-t border-white/5 text-left">
             <div className="p-4 rounded-xl bg-[#050815]/60 border border-white/5 backdrop-blur-sm">
               <div className="text-2xl font-bold text-white mb-1">4 Sources</div>
@@ -148,7 +149,7 @@ export default function LandingPage() {
                 title: "Web Search Harvester",
                 desc: "Extract emails and business intelligence from corporate websites and SaaS platforms.",
                 tag: "Global SaaS & Tech",
-                icon: Zap,
+                icon: Globe,
                 color: "text-cyan-400"
               },
               {

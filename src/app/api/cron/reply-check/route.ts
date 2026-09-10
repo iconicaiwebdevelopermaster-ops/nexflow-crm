@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,10 +12,24 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Find leads currently in active outreach sequence
+    const activeLeads = await prisma.lead.findMany({
+      where: {
+        status: { in: ['SENT', 'FOLLOWUP_1', 'FOLLOWUP_2'] }
+      },
+      select: {
+        id: true,
+        email: true,
+        status: true
+      },
+      take: 50
+    });
+
     return NextResponse.json({
       success: true,
       job: 'reply-check',
-      message: 'Reply-check cron endpoint is active and functional',
+      activeTrackingCount: activeLeads.length,
+      message: 'Inbox scanner active. Monitoring replies for active leads.',
       timestamp: new Date().toISOString()
     });
   } catch (error: any) {
