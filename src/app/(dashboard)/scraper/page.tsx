@@ -9,13 +9,11 @@ import {
   Briefcase, 
   Layers, 
   Download, 
-  Sparkles, 
   CheckCircle2, 
   Building2, 
   Mail, 
   Phone, 
   Loader2,
-  ShieldCheck,
   Zap
 } from 'lucide-react';
 
@@ -65,14 +63,17 @@ export default function ScraperPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to harvest');
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Server error during search');
+      }
 
       if (data.results && data.results.length > 0) {
         setResults(data.results);
         setSelectedIds(new Set(data.results.map((_: any, idx: number) => idx)));
         showToast(`Harvested ${data.results.length} verified B2B leads from ${source.toUpperCase()}!`);
       } else {
-        showToast('No leads found.', 'error');
+        showToast('No leads returned from API.', 'error');
       }
     } catch (err: any) {
       showToast(err.message || 'Search failed', 'error');
@@ -140,12 +141,12 @@ export default function ScraperPage() {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-bold text-white tracking-tight">NexScraper Engine v10.0</h1>
-            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 uppercase tracking-wide flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5" /> High-Speed Entity Engine
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 uppercase tracking-wide flex items-center gap-1">
+              <Zap className="w-3.5 h-3.5 text-cyan-400" /> High-Speed Engine Active
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Instant multi-source B2B lead generation with city-specific domain and phone formatting.
+            Instant multi-source B2B lead generation with city-specific domains and phone codes.
           </p>
         </div>
 
@@ -243,7 +244,7 @@ export default function ScraperPage() {
           <div className="flex items-center justify-between pt-2">
             <div className="flex items-center gap-2 text-xs text-slate-400">
               <Zap className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Instant High-Speed Scraper Active</span>
+              <span>High-Speed Scraper Engine v10.0 Active</span>
             </div>
 
             <button
@@ -254,7 +255,7 @@ export default function ScraperPage() {
               {loading ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> Harvesting Leads...</>
               ) : (
-                <><Search className="w-4 h-4" /> Execute Search</>
+                <><Search className="w-4 h-4" /> Execute Fast Search</>
               )}
             </button>
           </div>
