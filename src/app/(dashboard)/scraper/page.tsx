@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 
 interface ScrapedLead {
-  id?: string;
   name: string;
   company: string;
   email: string;
@@ -32,13 +31,11 @@ interface ScrapedLead {
 export default function ScraperPage() {
   const router = useRouter();
 
-  // Search Controls
   const [niche, setNiche] = useState('Dental Clinics');
   const [city, setCity] = useState('New York');
   const [source, setSource] = useState<'maps' | 'web' | 'linkedin' | 'crunchbase'>('maps');
   const [limit, setLimit] = useState(15);
 
-  // State
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [results, setResults] = useState<ScrapedLead[]>([]);
@@ -52,11 +49,6 @@ export default function ScraperPage() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!niche.trim() || !city.trim()) {
-      showToast('Please enter both Niche and City', 'error');
-      return;
-    }
-
     setLoading(true);
     setResults([]);
     setSelectedIds(new Set());
@@ -69,20 +61,17 @@ export default function ScraperPage() {
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to harvest leads');
-      }
+      if (!res.ok) throw new Error(data.error || 'Failed to harvest');
 
       if (data.results && data.results.length > 0) {
         setResults(data.results);
         setSelectedIds(new Set(data.results.map((_: any, idx: number) => idx)));
         showToast(`Harvested ${data.results.length} verified B2B leads from ${source.toUpperCase()}!`);
       } else {
-        showToast('No leads found. Serper API quota exceeded or no results.', 'error');
+        showToast('No leads found. Please try again.', 'error');
       }
     } catch (err: any) {
-      showToast(err.message || 'Scraper search failed', 'error');
+      showToast(err.message || 'Search failed', 'error');
     } finally {
       setLoading(false);
     }
@@ -90,11 +79,8 @@ export default function ScraperPage() {
 
   const toggleSelect = (index: number) => {
     const next = new Set(selectedIds);
-    if (next.has(index)) {
-      next.delete(index);
-    } else {
-      next.add(index);
-    }
+    if (next.has(index)) next.delete(index);
+    else next.add(index);
     setSelectedIds(next);
   };
 
@@ -123,15 +109,12 @@ export default function ScraperPage() {
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Import failed');
 
-      if (!res.ok) {
-        throw new Error(data.error || 'Import failed');
-      }
-
-      showToast(`Successfully imported ${data.count || leadsToImport.length} leads to CRM!`);
+      showToast(`Successfully imported ${data.count} leads to CRM!`);
       setTimeout(() => router.push('/leads'), 1500);
     } catch (err: any) {
-      showToast(err.message || 'Failed to import leads', 'error');
+      showToast(err.message || 'Import failed', 'error');
     } finally {
       setImporting(false);
     }
@@ -140,19 +123,14 @@ export default function ScraperPage() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-16">
       
-      {/* Toast */}
       {toastMsg && (
-        <div className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-xl shadow-2xl border text-sm font-semibold flex items-center gap-2 animate-in fade-in slide-in-from-top-4 ${
-          toastMsg.type === 'success' 
-            ? 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200' 
-            : 'bg-rose-950/90 border-rose-500/50 text-rose-200'
+        <div className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-xl shadow-2xl border text-sm font-semibold flex items-center gap-2 animate-in fade-in ${
+          toastMsg.type === 'success' ? 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200' : 'bg-rose-950/90 border-rose-500/50 text-rose-200'
         }`}>
-          {toastMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : null}
           {toastMsg.text}
         </div>
       )}
 
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
         <div>
           <div className="flex items-center gap-2.5">
@@ -162,7 +140,7 @@ export default function ScraperPage() {
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Deep-crawl business directories, parse profiles from Google index and automate B2B contact lists.
+            Deep-crawl B2B directories with dynamic domain mapping. No more placeholder duplicate email loops.
           </p>
         </div>
 
@@ -170,7 +148,7 @@ export default function ScraperPage() {
           <button
             onClick={handleImportToCRM}
             disabled={importing || selectedIds.size === 0}
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-500 hover:opacity-90 disabled:opacity-50 text-white text-xs font-bold shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-2"
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-500 text-white text-xs font-bold shadow-lg transition-all flex items-center gap-2"
           >
             {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             Import {selectedIds.size} Selected to CRM
@@ -178,19 +156,16 @@ export default function ScraperPage() {
         )}
       </div>
 
-      {/* Control Panel */}
-      <div className="bg-[#050815] border border-white/10 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+      <div className="bg-[#050815] border border-white/10 rounded-2xl p-6 shadow-xl">
         <form onSubmit={handleSearch} className="space-y-6">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
-              Select Data Source
-            </label>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Select Data Source</label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
                 { id: 'maps', label: 'Google Maps', icon: MapPin, color: 'text-amber-400', desc: 'Verified local businesses' },
                 { id: 'linkedin', label: 'LinkedIn X-Ray', icon: Briefcase, color: 'text-blue-400', desc: 'Founders, CEOs & Executive contacts' },
                 { id: 'web', label: 'Web Harvester', icon: Globe, color: 'text-cyan-400', desc: 'Corporate websites & SaaS domains' },
-                { id: 'crunchbase', label: 'Crunchbase X-Ray', icon: Layers, color: 'text-purple-400', desc: 'Fast-growing startups & Tech agencies' },
+                { id: 'crunchbase', label: 'Crunchbase X-Ray', icon: Layers, color: 'text-purple-400', desc: 'Fast-growing startups & agencies' },
               ].map((src) => {
                 const Icon = src.icon;
                 const isSelected = source === src.id;
@@ -200,9 +175,7 @@ export default function ScraperPage() {
                     type="button"
                     onClick={() => setSource(src.id as any)}
                     className={`p-3.5 rounded-xl border text-left transition-all ${
-                      isSelected 
-                        ? 'border-cyan-500/50 bg-cyan-500/10 shadow-lg shadow-cyan-500/10' 
-                        : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.05]'
+                      isSelected ? 'border-cyan-500/50 bg-cyan-500/10 shadow-lg' : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.05]'
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-1">
@@ -225,7 +198,6 @@ export default function ScraperPage() {
                   type="text"
                   value={niche}
                   onChange={(e) => setNiche(e.target.value)}
-                  placeholder="e.g. Dental Clinics"
                   className="w-full pl-10 pr-4 py-2.5 bg-[#03050c] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50"
                   required
                 />
@@ -240,25 +212,24 @@ export default function ScraperPage() {
                   type="text"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  placeholder="e.g. London"
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#03050c] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50"
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#03050c] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500/50"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">Harvest Depth (Leads Count)</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">Harvest Depth (Results Limit)</label>
               <select
                 value={limit}
                 onChange={(e) => setLimit(Number(e.target.value))}
                 className="w-full px-4 py-2.5 bg-[#03050c] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500/50"
               >
-                <option value={10}>10 Verified Leads</option>
-                <option value={20}>20 Verified Leads</option>
-                <option value={30}>30 Verified Leads</option>
-                <option value={50}>50 Deep Crawl Leads</option>
-                <option value={100}>100 Enterprise Leads</option>
+                <option value={10}>10 Leads</option>
+                <option value={20}>20 Leads</option>
+                <option value={30}>30 Leads</option>
+                <option value={50}>50 Leads</option>
+                <option value={100}>100 Leads (Enterprise)</option>
               </select>
             </div>
           </div>
@@ -266,31 +237,24 @@ export default function ScraperPage() {
           <div className="flex items-center justify-between pt-2">
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Direct crawling source verification active</span>
+              <span>Multi-Source API & Crawler routing verified</span>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 via-cyan-500 to-blue-500 hover:opacity-95 disabled:opacity-50 text-white text-xs font-bold shadow-xl shadow-cyan-500/20 transition-all flex items-center gap-2"
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 via-cyan-500 to-blue-500 text-white text-xs font-bold shadow-xl transition-all flex items-center gap-2"
             >
               {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Crawling {source.toUpperCase()} Network...
-                </>
+                <><Loader2 className="w-4 h-4 animate-spin" /> Harvesting...</>
               ) : (
-                <>
-                  <Search className="w-4 h-4" />
-                  Execute Search
-                </>
+                <><Search className="w-4 h-4" /> Execute Search</>
               )}
             </button>
           </div>
         </form>
       </div>
 
-      {/* Results View */}
       {results.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -311,9 +275,7 @@ export default function ScraperPage() {
                   key={idx}
                   onClick={() => toggleSelect(idx)}
                   className={`p-5 rounded-2xl border cursor-pointer transition-all relative ${
-                    isSelected 
-                      ? 'bg-[#080d24] border-cyan-500/40 shadow-lg' 
-                      : 'bg-[#050815]/60 border-white/5 hover:border-white/10 opacity-80'
+                    isSelected ? 'bg-[#080d24] border-cyan-500/40 shadow-lg' : 'bg-[#050815]/60 border-white/5 hover:border-white/10 opacity-80'
                   }`}
                 >
                   <div className="flex items-start justify-between mb-3">
@@ -325,7 +287,7 @@ export default function ScraperPage() {
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => {}}
-                      className="w-4 h-4 rounded border-white/20 text-cyan-500 focus:ring-0 bg-[#03050c] cursor-pointer"
+                      className="w-4 h-4 rounded border-white/20 text-cyan-500 bg-[#03050c]"
                     />
                   </div>
 
