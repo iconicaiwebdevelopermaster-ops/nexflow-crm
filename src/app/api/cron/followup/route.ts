@@ -25,7 +25,6 @@ export async function GET(req: NextRequest) {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - FOLLOWUP_DELAY_DAYS);
 
-    // Find leads due for Follow-up #1 or Follow-up #2
     const dueLeads = await prisma.lead.findMany({
       where: {
         status: { in: ['SENT', 'FOLLOWUP_1'] },
@@ -76,7 +75,6 @@ export async function GET(req: NextRequest) {
         let threadId = lastEmail?.gmailThreadId || '';
 
         if (gmailAccount) {
-          // Send via Gmail OAuth API (Preserving Thread)
           const gmail = await getGmailClientForUser(user.id);
           const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
           
@@ -113,7 +111,6 @@ export async function GET(req: NextRequest) {
             data: { sentToday: { increment: 1 } },
           });
         } else if (user.smtpUser && user.smtpPass) {
-          // Send via Manual SMTP
           const transporter = nodemailer.createTransport({
             host: user.smtpHost || 'smtp.gmail.com',
             port: user.smtpPort || 587,
@@ -134,7 +131,6 @@ export async function GET(req: NextRequest) {
           continue;
         }
 
-        // DB Updates
         await prisma.$transaction([
           prisma.emailSent.create({
             data: {

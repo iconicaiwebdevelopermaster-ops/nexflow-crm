@@ -10,7 +10,6 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const secret = searchParams.get('secret');
 
-    // Simple security validation
     const expectedSecret = process.env.CRON_SECRET || 'nexflow-cron-secret-2026';
     const authHeader = req.headers.get('authorization');
 
@@ -18,7 +17,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized cron trigger' }, { status: 401 });
     }
 
-    // Find all users with active Gmail OAuth accounts
     const activeGmailAccounts = await prisma.gmailAccount.findMany({
       where: { isActive: true },
       select: { userId: true, email: true },
