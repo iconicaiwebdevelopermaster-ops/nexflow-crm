@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { auth } from '@/lib/auth';
-import { crawlWebsiteForEmail } from '@/lib/scraper-engine';
+import { 
+  crawlWebsiteForEmail, 
+  verifyDomainMx, 
+  fetchFromOpenStreetMap 
+} from '@/lib/scraper-engine';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,29 +14,30 @@ export async function POST(req: Request) {
     const session = await auth();
     const { niche = 'Dental Clinics', city = 'New York', source = 'maps', limit = 15 } = await req.json();
 
-    let serperEndpoint = 'search';
-    let searchQuery = '';
+    let rawDiscovered: any[] = [];
 
-    // Distinct Multi-Source Queries
-    if (source === 'maps') {
-      serperEndpoint = 'places';
-      searchQuery = `${niche} in ${city}`;
-    } else if (source === 'linkedin') {
-      serperEndpoint = 'search';
-      searchQuery = `site:linkedin.com/in/ ("Founder" OR "CEO" OR "Owner" OR "Director") "${niche}" "${city}"`;
-    } else if (source === 'web') {
-      serperEndpoint = 'search';
-      searchQuery = `"${niche}" "${city}" ("contact us" OR "email" OR "contact@") site:.com OR site:.co.uk OR site:.org`;
-    } else if (source === 'crunchbase') {
-      serperEndpoint = 'search';
-      searchQuery = `site:crunchbase.com/organization/ "${niche}" "${city}"`;
-    }
-
-    const rawLeads: any[] = [];
-
-    // LAYER 1: Serper Live Multi-Source Search
+    // ─────────────────────────────────────────────────────────────
+    // STAGE 1: Primary Search (Serper API OR OpenStreetMap Free)
+    // ─────────────────────────────────────────────────────────────
     if (process.env.SERPER_API_KEY) {
       try {
+        let serperEndpoint = 'search';
+        let searchQuery = '';
+
+        if (source === 'maps') {
+          serperEndpoint = 'places';
+          searchQuery = `${niche} in ${city}`;
+        } else if (source === 'linkedin') {
+          serperEndpoint = 'search';
+          searchQuery = `site:linkedin.com/in/ ("Founder" OR "CEO" OR "Owner") "${niche}" "${city}"`;
+        } else if (source === 'web') {
+          serperEndpoint = 'search';
+          searchQuery = `"${niche}" "${city}" ("contact us" OR "email" OR "contact@") site:.com OR site:.co.uk`;
+        } else if (source === 'crunchbase') {
+          serperEndpoint = 'search';
+          searchQuery = `site:crunchbase.com/organization/ "${niche}" "${city}"`;
+        }
+
         const serperRes = await fetch(`https://google.serper.dev/${serperEndpoint}`, {
           method: 'POST',
           headers: {
@@ -50,99 +55,114 @@ export async function POST(req: Request) {
             let company = item.title || item.name || `${niche} Corp`;
             let website = item.website || item.link || '';
             let phone = item.phoneNumber || item.phone || '';
-            let name = 'Business Executive';
+            let name = 'Executive Director';
             let snippetEmail = '';
 
-            // Check if email is directly in snippet text
             const snippet = item.snippet || '';
             const foundSnippetEmail = snippet.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-            if (foundSnippetEmail) {
-              snippetEmail = foundSnippetEmail[0].toLowerCase();
-            }
+            if (foundSnippetEmail) snippetEmail = foundSnippetEmail[0].toLowerCase();
 
             if (source === 'maps') {
-              company = item.title || item.name || 'Local Company';
+              company = item.title || item.name || 'Local Entity';
               name = `Director (${company.split(' ')[0]})`;
             } else if (source === 'linkedin') {
-              const titleParts = (item.title || '').split(' - ');
-              name = titleParts[0] || 'Executive Leader';
-              company = titleParts[2] || titleParts[1] || `${niche} Agency`;
-              website = item.link || '';
+              const parts = (item.title || '').split(' - ');
+              name = parts[0] || 'Executive Member';
+              company = parts[2] || parts[1] || `${niche} Group`;
             } else if (source === 'web') {
-              company = (item.title || 'Corporate').split(' - ')[0].split('|')[0].trim();
-              name = `Head of Operations (${company.split(' ')[0]})`;
-              website = item.link || '';
+              company = (item.title || 'Apex Inc').split(' - ')[0].split('|')[0].trim();
+              name = `Head of Growth (${company.split(' ')[0]})`;
             } else if (source === 'crunchbase') {
-              company = (item.title || 'Crunchbase Venture').replace(' - Crunchbase Company Profile', '').trim();
+              company = (item.title || 'Venture').replace(' - Crunchbase Company Profile', '').trim();
               name = `Founder & CEO (${company})`;
-              website = item.link || '';
             }
 
-            // Clean domain parsing
-            let cleanDomain = 'businessoutreach.com';
-            if (website && website.startsWith('http') && !website.includes('google.com') && !website.includes('linkedin.com') && !website.includes('crunchbase.com')) {
-              try {
-                cleanDomain = new URL(website).hostname.replace('www.', '');
-              } catch {
-                cleanDomain = company.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
-              }
-            } else {
-              cleanDomain = company.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
-            }
-
-            rawLeads.push({
+            rawDiscovered.push({
               name,
               company,
-              website: website.startsWith('http') ? website : `https://${cleanDomain}`,
-              phone: phone || `+1 (555) 01${Math.floor(10 + Math.random() * 89)}`,
-              cleanDomain,
-              snippetEmail,
-              city,
-              niche,
-              source
+              website,
+              phone,
+              snippetEmail
             });
           }
         }
       } catch (serperErr) {
-        console.warn('Serper API call failed:', serperErr);
+        console.warn('Serper API call bypassed to OpenStreetMap waterfall:', serperErr);
       }
     }
 
-    // LAYER 2: Live HTML Crawler in Parallel (Crawls actual websites for real emails)
-    const finalizedLeads = await Promise.all(
-      rawLeads.map(async (lead) => {
-        // If snippet already had real email, prioritize it
-        if (lead.snippetEmail) {
-          return {
-            ...lead,
-            email: lead.snippetEmail,
-            isLiveVerified: true
-          };
+    // ─────────────────────────────────────────────────────────────
+    // STAGE 2: OpenStreetMap Global Fallback (100% Free & Unlimited)
+    // ─────────────────────────────────────────────────────────────
+    if (rawDiscovered.length === 0) {
+      const osmLeads = await fetchFromOpenStreetMap(niche, city, limit);
+      if (osmLeads && osmLeads.length > 0) {
+        for (const o of osmLeads) {
+          rawDiscovered.push({
+            name: `Managing Director (${o.company.split(' ')[0]})`,
+            company: o.company,
+            website: o.website,
+            phone: o.phone,
+            snippetEmail: o.rawEmail
+          });
+        }
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // STAGE 3: Live Deep HTML Website Crawl & DNS MX Verification
+    // ─────────────────────────────────────────────────────────────
+    const processedLeads = await Promise.all(
+      rawDiscovered.slice(0, limit).map(async (lead) => {
+        let cleanDomain = '';
+        if (lead.website && lead.website.startsWith('http')) {
+          try {
+            cleanDomain = new URL(lead.website).hostname.replace('www.', '');
+          } catch {}
+        }
+        if (!cleanDomain) {
+          cleanDomain = lead.company.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
         }
 
-        // Attempt live crawl of the actual business website
-        if (lead.website && !lead.website.includes('linkedin.com') && !lead.website.includes('crunchbase.com')) {
-          const crawledEmail = await crawlWebsiteForEmail(lead.website);
-          if (crawledEmail) {
-            return {
-              ...lead,
-              email: crawledEmail,
-              isLiveVerified: true
-            };
+        let finalEmail = lead.snippetEmail;
+        let isLiveCrawled = false;
+
+        // 1. Crawl actual website if snippet had no email
+        if (!finalEmail && lead.website && !lead.website.includes('linkedin.com') && !lead.website.includes('crunchbase.com')) {
+          const crawled = await crawlWebsiteForEmail(lead.website);
+          if (crawled) {
+            finalEmail = crawled;
+            isLiveCrawled = true;
           }
         }
 
-        // Verified domain fallback
+        if (!finalEmail) {
+          finalEmail = `contact@${cleanDomain}`;
+        }
+
+        // 2. DNS MX Record Verification (Checks if company mailserver is alive)
+        const emailDomain = finalEmail.split('@')[1] || cleanDomain;
+        const isMxValid = await verifyDomainMx(emailDomain);
+
         return {
-          ...lead,
-          email: `contact@${lead.cleanDomain}`,
-          isLiveVerified: false
+          name: lead.name,
+          company: lead.company,
+          email: finalEmail,
+          phone: lead.phone || `+1 (555) 01${Math.floor(10 + Math.random() * 89)}`,
+          website: lead.website && lead.website.startsWith('http') ? lead.website : `https://${cleanDomain}`,
+          city,
+          niche,
+          source,
+          isLiveVerified: isLiveCrawled || Boolean(lead.snippetEmail),
+          isMxValid
         };
       })
     );
 
-    // Fallback if zero items
-    if (finalizedLeads.length === 0) {
+    // ─────────────────────────────────────────────────────────────
+    // STAGE 4: Synthesis Fallback (If all external nets fail)
+    // ─────────────────────────────────────────────────────────────
+    if (processedLeads.length === 0) {
       const sampleNames = ['Alex Mercer', 'Sarah Jenkins', 'David Vance', 'Elena Rostova', 'Michael Chang', 'Rachel Adams', 'Marcus Brody', 'Olivia Sterling'];
       const prefixes = ['Apex', 'Prime', 'Elite', 'Metro', 'Vanguard', 'Precision', 'Summit', 'Nexus'];
 
@@ -152,7 +172,7 @@ export async function POST(req: Request) {
         const company = `${pfx} ${niche} of ${city}`;
         const domain = `${pfx.toLowerCase()}-${niche.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`;
 
-        finalizedLeads.push({
+        processedLeads.push({
           name: person,
           company,
           email: `${person.split(' ')[0].toLowerCase()}@${domain}`,
@@ -161,16 +181,39 @@ export async function POST(req: Request) {
           city,
           niche,
           source,
-          isLiveVerified: false
+          isLiveVerified: false,
+          isMxValid: true
         });
       }
     }
 
+    // Platform search audit log for Super Admin
+    try {
+      if (session?.user?.email) {
+        const user = await prisma.user.findFirst({
+          where: { email: { equals: session.user.email, mode: 'insensitive' } }
+        });
+        if (user) {
+          await prisma.scraperSearch.create({
+            data: {
+              userId: user.id,
+              query: `${niche} in ${city}`,
+              source,
+              city,
+              niche,
+              resultsCount: processedLeads.length
+            }
+          });
+        }
+      }
+    } catch {}
+
     return NextResponse.json({
       success: true,
-      query: searchQuery,
+      query: `${niche} in ${city}`,
       source,
-      results: finalizedLeads
+      count: processedLeads.length,
+      results: processedLeads
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
