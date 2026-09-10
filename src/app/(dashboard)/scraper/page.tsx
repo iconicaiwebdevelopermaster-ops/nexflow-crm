@@ -13,7 +13,7 @@ import {
   Search,
   MapPin,
   Globe,
-  Linkedin,
+  Briefcase,
   Flame,
   CheckCircle2,
   Download,
@@ -26,7 +26,7 @@ import {
 const SOURCES = [
   { id: 'google_maps', label: 'Google Maps', icon: MapPin, desc: 'Local businesses & clinics' },
   { id: 'web_search', label: 'Web Search', icon: Globe, desc: 'Global B2B websites' },
-  { id: 'linkedin', label: 'LinkedIn X-Ray', icon: Linkedin, desc: 'Founders & CEOs' },
+  { id: 'linkedin', label: 'LinkedIn X-Ray', icon: Briefcase, desc: 'Founders & CEOs' },
   { id: 'indeed', label: 'Indeed X-Ray', icon: Flame, desc: 'Active hiring companies' },
 ];
 
@@ -75,7 +75,7 @@ export default function ScraperPage() {
 
       if (data.leads && Array.isArray(data.leads)) {
         setResults(data.leads);
-        setSelectedLeads(data.leads); // Default select all
+        setSelectedLeads(data.leads);
         toast({
           title: 'Harvest Complete! 🚀',
           description: `Extracted ${data.leads.length} high-quality B2B leads.`,
@@ -146,7 +146,6 @@ export default function ScraperPage() {
         description="Harvest targeted B2B leads from Google Maps, LinkedIn, Web & Indeed with 3-layer fallback."
       />
 
-      {/* SEARCH CONFIG PANEL */}
       <Card className="p-5 bg-slate-900/60 border-slate-800 space-y-5">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {SOURCES.map((s) => {
@@ -226,7 +225,6 @@ export default function ScraperPage() {
         </form>
       </Card>
 
-      {/* RESULTS LIST */}
       {results.length > 0 && (
         <Card className="p-5 bg-slate-900/60 border-slate-800 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
