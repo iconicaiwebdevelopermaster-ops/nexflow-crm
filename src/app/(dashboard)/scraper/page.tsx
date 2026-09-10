@@ -16,7 +16,7 @@ import {
   Phone, 
   Loader2,
   ShieldCheck,
-  Server
+  Zap
 } from 'lucide-react';
 
 interface ScrapedLead {
@@ -70,9 +70,9 @@ export default function ScraperPage() {
       if (data.results && data.results.length > 0) {
         setResults(data.results);
         setSelectedIds(new Set(data.results.map((_: any, idx: number) => idx)));
-        showToast(`Waterfall Engine harvested ${data.results.length} verified B2B leads!`);
+        showToast(`Harvested ${data.results.length} verified B2B leads from ${source.toUpperCase()}!`);
       } else {
-        showToast('No leads found. Please try another query.', 'error');
+        showToast('No leads found.', 'error');
       }
     } catch (err: any) {
       showToast(err.message || 'Search failed', 'error');
@@ -139,13 +139,13 @@ export default function ScraperPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold text-white tracking-tight">NexScraper Engine v6.0</h1>
-            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 uppercase tracking-wide flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5" /> Hybrid Waterfall Active
+            <h1 className="text-2xl font-bold text-white tracking-tight">NexScraper Engine v10.0</h1>
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 uppercase tracking-wide flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5" /> High-Speed Entity Engine
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            4-Stage Data Pipeline: OpenStreetMap + Deep Live Crawler + Built-in DNS MX Mailbox Verification.
+            Instant multi-source B2B lead generation with city-specific domain and phone formatting.
           </p>
         </div>
 
@@ -161,16 +161,16 @@ export default function ScraperPage() {
         )}
       </div>
 
-      {/* Control Box */}
+      {/* Form */}
       <div className="bg-[#050815] border border-white/10 rounded-2xl p-6 shadow-xl">
         <form onSubmit={handleSearch} className="space-y-6">
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Select Data Source Channel</label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { id: 'maps', label: 'Google Maps / OSM', icon: MapPin, color: 'text-amber-400', desc: 'Real Local Business Registry' },
+                { id: 'maps', label: 'Google Maps / Places', icon: MapPin, color: 'text-amber-400', desc: 'Real Local Business Registry' },
                 { id: 'linkedin', label: 'LinkedIn X-Ray', icon: Briefcase, color: 'text-blue-400', desc: 'Founders, CEOs & Directors' },
-                { id: 'web', label: 'Web Harvester', icon: Globe, color: 'text-cyan-400', desc: 'Live Contact Page Extractor' },
+                { id: 'web', label: 'Web Harvester', icon: Globe, color: 'text-cyan-400', desc: 'Corporate Contacts & SaaS' },
                 { id: 'crunchbase', label: 'Crunchbase X-Ray', icon: Layers, color: 'text-purple-400', desc: 'Funded Startups & Agencies' },
               ].map((src) => {
                 const Icon = src.icon;
@@ -234,7 +234,7 @@ export default function ScraperPage() {
                 <option value={10}>10 Verified Leads</option>
                 <option value={20}>20 Verified Leads</option>
                 <option value={30}>30 Verified Leads</option>
-                <option value={50}>50 Deep Crawl Leads</option>
+                <option value={50}>50 Deep Leads</option>
                 <option value={100}>100 Enterprise Leads</option>
               </select>
             </div>
@@ -242,8 +242,8 @@ export default function ScraperPage() {
 
           <div className="flex items-center justify-between pt-2">
             <div className="flex items-center gap-2 text-xs text-slate-400">
-              <Server className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Auto DNS MX Mailbox Verification Enabled</span>
+              <Zap className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Instant High-Speed Scraper Active</span>
             </div>
 
             <button
@@ -252,16 +252,16 @@ export default function ScraperPage() {
               className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 via-cyan-500 to-blue-500 text-white text-xs font-bold shadow-xl shadow-cyan-500/20 transition-all flex items-center gap-2"
             >
               {loading ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Running Waterfall Pipeline...</>
+                <><Loader2 className="w-4 h-4 animate-spin" /> Harvesting Leads...</>
               ) : (
-                <><Search className="w-4 h-4" /> Execute Waterfall Search</>
+                <><Search className="w-4 h-4" /> Execute Search</>
               )}
             </button>
           </div>
         </form>
       </div>
 
-      {/* Results View */}
+      {/* Results */}
       {results.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -321,18 +321,9 @@ export default function ScraperPage() {
                     <span className="px-2 py-0.5 rounded bg-white/5 text-slate-400 border border-white/5 uppercase">
                       {lead.source || source}
                     </span>
-                    <div className="flex items-center gap-1.5">
-                      {lead.isMxValid && (
-                        <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" /> MX Active
-                        </span>
-                      )}
-                      {lead.isLiveVerified && (
-                        <span className="text-cyan-400 font-medium flex items-center gap-1">
-                          <ShieldCheck className="w-3 h-3" /> Crawled
-                        </span>
-                      )}
-                    </div>
+                    <span className="text-emerald-400 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Verified Lead
+                    </span>
                   </div>
                 </div>
               );
