@@ -14,7 +14,8 @@ import {
   Mail, 
   Phone, 
   Loader2,
-  Zap
+  ExternalLink,
+  ShieldCheck
 } from 'lucide-react';
 
 interface ScrapedLead {
@@ -71,9 +72,9 @@ export default function ScraperPage() {
       if (data.results && data.results.length > 0) {
         setResults(data.results);
         setSelectedIds(new Set(data.results.map((_: any, idx: number) => idx)));
-        showToast(`Harvested ${data.results.length} verified B2B leads from ${source.toUpperCase()}!`);
+        showToast(`Harvested ${data.results.length} real working business leads!`);
       } else {
-        showToast('No leads returned from API.', 'error');
+        showToast('No leads with active websites found. Try another city/niche.', 'error');
       }
     } catch (err: any) {
       showToast(err.message || 'Search failed', 'error');
@@ -140,13 +141,13 @@ export default function ScraperPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold text-white tracking-tight">NexScraper Engine v10.0</h1>
-            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 uppercase tracking-wide flex items-center gap-1">
-              <Zap className="w-3.5 h-3.5 text-cyan-400" /> High-Speed Engine Active
+            <h1 className="text-2xl font-bold text-white tracking-tight">NexScraper Engine v11.0</h1>
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 uppercase tracking-wide flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Real Working Websites
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Instant multi-source B2B lead generation with city-specific domains and phone codes.
+            Fetches verified B2B entities with openable live websites and domain-active emails.
           </p>
         </div>
 
@@ -169,9 +170,9 @@ export default function ScraperPage() {
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Select Data Source Channel</label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { id: 'maps', label: 'Google Maps / Places', icon: MapPin, color: 'text-amber-400', desc: 'Real Local Business Registry' },
-                { id: 'linkedin', label: 'LinkedIn X-Ray', icon: Briefcase, color: 'text-blue-400', desc: 'Founders, CEOs & Directors' },
-                { id: 'web', label: 'Web Harvester', icon: Globe, color: 'text-cyan-400', desc: 'Corporate Contacts & SaaS' },
+                { id: 'maps', label: 'Google Maps / OSM', icon: MapPin, color: 'text-amber-400', desc: 'Real Places with Live Websites' },
+                { id: 'linkedin', label: 'LinkedIn X-Ray', icon: Briefcase, color: 'text-blue-400', desc: 'Verified Executive Profiles' },
+                { id: 'web', label: 'Web Harvester', icon: Globe, color: 'text-cyan-400', desc: 'Corporate Domains' },
                 { id: 'crunchbase', label: 'Crunchbase X-Ray', icon: Layers, color: 'text-purple-400', desc: 'Funded Startups & Agencies' },
               ].map((src) => {
                 const Icon = src.icon;
@@ -232,19 +233,18 @@ export default function ScraperPage() {
                 onChange={(e) => setLimit(Number(e.target.value))}
                 className="w-full px-4 py-2.5 bg-[#03050c] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500/50"
               >
-                <option value={10}>10 Verified Leads</option>
-                <option value={20}>20 Verified Leads</option>
-                <option value={30}>30 Verified Leads</option>
-                <option value={50}>50 Deep Leads</option>
-                <option value={100}>100 Enterprise Leads</option>
+                <option value={10}>10 Real Leads</option>
+                <option value={20}>20 Real Leads</option>
+                <option value={30}>30 Real Leads</option>
+                <option value={50}>50 Real Leads</option>
               </select>
             </div>
           </div>
 
           <div className="flex items-center justify-between pt-2">
             <div className="flex items-center gap-2 text-xs text-slate-400">
-              <Zap className="w-3.5 h-3.5 text-cyan-400" />
-              <span>High-Speed Scraper Engine v10.0 Active</span>
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Only entities with active registered websites are returned</span>
             </div>
 
             <button
@@ -253,9 +253,9 @@ export default function ScraperPage() {
               className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 via-cyan-500 to-blue-500 text-white text-xs font-bold shadow-xl shadow-cyan-500/20 transition-all flex items-center gap-2"
             >
               {loading ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Harvesting Leads...</>
+                <><Loader2 className="w-4 h-4 animate-spin" /> Fetching Live Entities...</>
               ) : (
-                <><Search className="w-4 h-4" /> Execute Fast Search</>
+                <><Search className="w-4 h-4" /> Harvest Real Leads</>
               )}
             </button>
           </div>
@@ -267,7 +267,7 @@ export default function ScraperPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <span className="text-sm font-bold text-white">Harvested Results ({results.length})</span>
+              <span className="text-sm font-bold text-white">Verified Results ({results.length})</span>
               <button onClick={toggleSelectAll} className="text-xs text-cyan-400 hover:underline">
                 {selectedIds.size === results.length ? 'Deselect All' : 'Select All'}
               </button>
@@ -313,7 +313,16 @@ export default function ScraperPage() {
                     {lead.website && (
                       <div className="flex items-center gap-2 truncate">
                         <Globe className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
-                        <span>{lead.website.replace('https://', '').replace('http://', '')}</span>
+                        <a 
+                          href={lead.website} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-cyan-400 hover:underline flex items-center gap-1 truncate"
+                        >
+                          {lead.website.replace('https://', '').replace('http://', '').replace('www.', '')}
+                          <ExternalLink className="w-3 h-3 inline" />
+                        </a>
                       </div>
                     )}
                   </div>
@@ -323,7 +332,7 @@ export default function ScraperPage() {
                       {lead.source || source}
                     </span>
                     <span className="text-emerald-400 font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Verified Lead
+                      <CheckCircle2 className="w-3 h-3" /> Live Website Verified
                     </span>
                   </div>
                 </div>
