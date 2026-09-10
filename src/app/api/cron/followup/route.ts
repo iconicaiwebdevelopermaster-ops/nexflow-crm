@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
         if (gmailAccount) {
           const gmail = await getGmailClientForUser(user.id);
           const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
-          
+
           const messageParts = [
             `From: ${gmailAccount.email}`,
             `To: ${lead.email}`,

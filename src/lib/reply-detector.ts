@@ -36,14 +36,13 @@ export async function checkRepliesForUser(userId: string) {
 
     const gmail = await getGmailClientForUser(userId);
 
-    // Fetch sent emails that have a gmailThreadId and lead is not yet REPLIED
     const pendingSentEmails = await prisma.emailSent.findMany({
       where: {
         userId,
         gmailThreadId: { not: null },
         lead: {
           status: {
-            in: ['SENT', 'FOLLOWUP_1', 'FOLLOWUP_2', 'QUEUED'],
+            in: ['SENT', 'FOLLOWUP_1', 'FOLLOWUP_2', 'QUEUED', 'CONTACTED'],
           },
         },
       },
@@ -58,7 +57,6 @@ export async function checkRepliesForUser(userId: string) {
       return { success: true, detectedCount: 0, message: 'No pending threads to check' };
     }
 
-    // Group by thread ID to minimize Gmail API calls
     const threadMap = new Map<string, typeof pendingSentEmails[0]>();
     for (const emailLog of pendingSentEmails) {
       if (emailLog.gmailThreadId && !threadMap.has(emailLog.gmailThreadId)) {
@@ -74,9 +72,8 @@ export async function checkRepliesForUser(userId: string) {
         });
 
         const messages = threadRes.data.messages || [];
-        if (messages.length <= 1) continue; // No reply yet (only our original email)
+        if (messages.length <= 1) continue;
 
-        // Find incoming message from lead
         for (const msg of messages) {
           const headers = msg.payload?.headers || [];
           const fromHeader = headers.find((h) => h.name?.toLowerCase() === 'from')?.value || '';
@@ -86,16 +83,13 @@ export async function checkRepliesForUser(userId: string) {
           const senderLower = senderEmail.toLowerCase().trim();
           const subjectLower = subjectHeader.toLowerCase().trim();
 
-          // Skip if email is from the user themselves
           if (senderLower.includes(gmailAccount.email.toLowerCase())) continue;
 
-          // Skip false positives (OOO, noreply)
           const isIgnoredSender = IGNORED_SENDER_PATTERNS.some((p) => senderLower.includes(p));
           const isIgnoredSubject = IGNORED_SUBJECT_PATTERNS.some((p) => subjectLower.includes(p));
 
           if (isIgnoredSender || isIgnoredSubject) continue;
 
-          // Genuine lead reply detected!
           await prisma.$transaction([
             prisma.lead.update({
               where: { id: emailLog.leadId },
@@ -114,7 +108,7 @@ export async function checkRepliesForUser(userId: string) {
           ]);
 
           detectedCount++;
-          break; // Stop scanning this thread once reply is confirmed
+          break;
         }
       } catch (threadErr: any) {
         console.error(`Error checking thread ${threadId}:`, threadErr.message);
