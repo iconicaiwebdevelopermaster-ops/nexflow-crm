@@ -83,14 +83,13 @@ model User {
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
-  leads            Lead[]
-  campaigns        Campaign[]
-  templates        Template[]
-  tasks            Task[]
-  activities       Activity[]
-  gmailAccounts    GmailAccount[]
-  scraperSearches  ScraperSearch[]
-  adminLogs        AdminLog[]
+  scraperSearchs ScraperSearch[]
+  gmailAccounts GmailAccount[]
+  leads Lead[]
+  campaigns Campaign[]
+  templates Template[]
+  sentEmails EmailSent[]
+  tasks Task[]
 
   @@map("users")
 }
