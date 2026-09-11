@@ -65,10 +65,12 @@ model User {
   cseApiKey        String?
   cseCx            String?
   aiEnabled        Boolean?        @default(false)
-  aiProvider       String?         @default("openai")
+  aiProvider       String?         @default("deepseek")
   aiModel          String?
   deepseekApiKey   String?
+  openaiApiKey     String?
   aiExtraPrompt    String?
+  aiProvider       String?         @default("openai")
   id            String          @id @default(uuid())
   name          String?
   email         String          @unique
