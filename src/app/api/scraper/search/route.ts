@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     const fullQuery = `${niche} in ${city}, ${country}`.trim();
     let leads: any[] = [];
 
-    // Stage 1: Try Serper API if key present in Vercel ENV or DB
+    // Stage 1: Try Serper API Places if key present
     if (process.env.SERPER_API_KEY) {
       try {
         const controller = new AbortController();
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
       } catch (e) {}
     }
 
-    // Stage 2: DuckDuckGo Organic Live Web Search (Zero Key Required - Dynamic World Coverage)
+    // Stage 2: DuckDuckGo Organic Search (String-Split Parser - Zero Regex Escape Issues)
     if (leads.length < limit) {
       try {
         const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(fullQuery + ' contact email')}`;
@@ -73,41 +73,47 @@ export async function POST(req: Request) {
 
         if (res.ok) {
           const html = await res.text();
-          const linkRegex = /<a class="result__a"[^>]*href="([^"]+)"[^>]*>([sS]*?)</a>/gi;
-          let match;
+          const parts = html.split('class="result__a"');
 
-          while ((match = linkRegex.exec(html)) !== null && leads.length < limit) {
-            const rawHref = match[1];
-            const rawTitle = match[2].replace(/<[^>]+>/g, '').trim();
-            if (!rawTitle || rawTitle.length < 3) continue;
+          for (let i = 1; i < parts.length && leads.length < limit; i++) {
+            const block = parts[i];
+            const hrefMatch = block.match(/href="([^"]+)"/);
+            const titleMatch = block.match(/">([^<]+)<\/a>/);
 
-            let cleanLink = rawHref;
-            if (rawHref.includes('uddg=')) {
-              try {
-                const parsed = new URL('https:' + (rawHref.startsWith('//') ? rawHref : '//' + rawHref));
-                cleanLink = decodeURIComponent(parsed.searchParams.get('uddg') || rawHref);
-              } catch {}
+            if (hrefMatch && titleMatch) {
+              const rawHref = hrefMatch[1];
+              const rawTitle = titleMatch[1].trim();
+
+              if (!rawTitle || rawTitle.length < 3) continue;
+
+              let cleanLink = rawHref;
+              if (rawHref.includes('uddg=')) {
+                try {
+                  const parsed = new URL('https:' + (rawHref.startsWith('//') ? rawHref : '//' + rawHref));
+                  cleanLink = decodeURIComponent(parsed.searchParams.get('uddg') || rawHref);
+                } catch {}
+              }
+
+              let domain = '';
+              try { domain = new URL(cleanLink).hostname.replace('www.', ''); } catch {}
+              if (!domain || domain.includes('duckduckgo')) continue;
+
+              const companyName = rawTitle.split('-')[0].split('|')[0].trim();
+
+              leads.push({
+                name: `Executive (${companyName.split(' ')[0]})`,
+                company: companyName,
+                address: `${city}, ${country}`,
+                email: `contact@${domain}`,
+                phone: 'Available on site',
+                website: cleanLink.startsWith('http') ? cleanLink : `https://${domain}`,
+                city,
+                country,
+                niche,
+                source,
+                isLiveVerified: true
+              });
             }
-
-            let domain = '';
-            try { domain = new URL(cleanLink).hostname.replace('www.', ''); } catch {}
-            if (!domain || domain.includes('duckduckgo')) continue;
-
-            const companyName = rawTitle.split('-')[0].split('|')[0].trim();
-
-            leads.push({
-              name: `Executive (${companyName.split(' ')[0]})`,
-              company: companyName,
-              address: `${city}, ${country}`,
-              email: `contact@${domain}`,
-              phone: 'Available on site',
-              website: cleanLink.startsWith('http') ? cleanLink : `https://${domain}`,
-              city,
-              country,
-              niche,
-              source,
-              isLiveVerified: true
-            });
           }
         }
       } catch (e) {}
