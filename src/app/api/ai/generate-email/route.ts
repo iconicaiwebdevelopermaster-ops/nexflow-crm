@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   try {
     const session = await auth();
-    const { leadName, company, niche, city, website } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const { leadName = 'Partner', company = 'Business', niche = 'Growth', city = 'Global', website = '' } = body;
 
     let user: any = null;
     if (session?.user?.email) {
@@ -20,67 +21,86 @@ export async function POST(req: Request) {
     const deepseekKey = user?.deepseekApiKey || process.env.DEEPSEEK_API_KEY;
     const openaiKey = user?.openaiApiKey || process.env.OPENAI_API_KEY;
 
-    const fromName = user?.fromName || 'Aamir';
-    const promoteSite = user?.promoteSite || 'our platform';
-    const promoteTopic = user?.promoteTopic || 'growth collaboration';
-    const extraPrompt = user?.aiExtraPrompt || 'keep it casual and short';
+    const fromName = user?.fromName || 'Iconic Usama';
+    const promoteSite = user?.promoteSite || 'besttradelogic.com';
+    const promoteTopic = user?.promoteTopic || 'AI Web Development & CRM Automation';
+    const extraPrompt = user?.aiExtraPrompt || 'keep it short under 4 sentences, casual tone';
 
-    const prompt = `Write a short, highly personalized cold outreach email from ${fromName}.
+    const prompt = `Write a short, high-converting 1-to-1 cold outreach email from ${fromName}.
 Target Lead: ${leadName} at ${company} (${niche} in ${city}, Website: ${website}).
-We are pitching/promoting: ${promoteTopic} (${promoteSite}).
-Extra instructions: ${extraPrompt}.
+Pitch Context: We offer ${promoteTopic} over at ${promoteSite}.
+Extra Guidelines: ${extraPrompt}.
 
-Return strictly valid JSON with "subject" and "body" keys. Do NOT use markdown codeblocks.`;
+STRICT REQUIREMENT: Return ONLY a valid JSON object with keys "subject" and "body". Do NOT use markdown code blocks or additional text.`;
 
-    // 1. DEEPSEEK PROVIDER (Very cheap)
+    // 1. DEEPSEEK AI PROVIDER (Very cheap & fast)
     if (provider === 'deepseek' && deepseekKey) {
-      const res = await fetch('https://api.deepseek.com/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${deepseekKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: user?.aiModel || 'deepseek-chat',
-          messages: [{ role: 'user', content: prompt }],
-          response_format: { type: 'json_object' }
-        })
-      });
+      try {
+        const res = await fetch('https://api.deepseek.com/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${deepseekKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: user?.aiModel || 'deepseek-chat',
+            messages: [{ role: 'user', content: prompt }],
+            response_format: { type: 'json_object' }
+          })
+        });
 
-      if (res.ok) {
-        const data = await res.json();
-        const content = JSON.parse(data.choices[0].message.content);
-        return NextResponse.json({ success: true, subject: content.subject, body: content.body });
+        if (res.ok) {
+          const data = await res.json();
+          const parsed = JSON.parse(data.choices[0].message.content);
+          return NextResponse.json({
+            success: true,
+            provider: 'DeepSeek AI',
+            subject: parsed.subject,
+            body: parsed.body
+          });
+        }
+      } catch (deepseekErr) {
+        console.warn('DeepSeek call failed, falling back to OpenAI/Template:', deepseekErr);
       }
     }
 
     // 2. OPENAI PROVIDER
     if (openaiKey) {
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: user?.aiModel || 'gpt-4o-mini',
-          messages: [{ role: 'user', content: prompt }],
-          response_format: { type: 'json_object' }
-        })
-      });
+      try {
+        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openaiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: user?.aiModel || 'gpt-4o-mini',
+            messages: [{ role: 'user', content: prompt }],
+            response_format: { type: 'json_object' }
+          })
+        });
 
-      if (res.ok) {
-        const data = await res.json();
-        const content = JSON.parse(data.choices[0].message.content);
-        return NextResponse.json({ success: true, subject: content.subject, body: content.body });
+        if (res.ok) {
+          const data = await res.json();
+          const parsed = JSON.parse(data.choices[0].message.content);
+          return NextResponse.json({
+            success: true,
+            provider: 'OpenAI GPT-4o-mini',
+            subject: parsed.subject,
+            body: parsed.body
+          });
+        }
+      } catch (openaiErr) {
+        console.warn('OpenAI call failed:', openaiErr);
       }
     }
 
-    // Template Fallback if AI not configured
+    // 3. HIGH-CONVERTING TEMPLATE FALLBACK
     return NextResponse.json({
       success: true,
-      subject: `Quick question regarding ${company}`,
-      body: `Hi ${leadName},\n\nI came across ${company} in ${city} and was really impressed by your work in ${niche}.\n\nI wanted to reach out regarding ${promoteTopic} over at ${promoteSite}.\n\nBest regards,\n${fromName}`
+      provider: 'Template Fallback',
+      subject: `Quick idea regarding ${company}`,
+      body: `Hi ${leadName},\n\nI came across ${company} in ${city} and was really impressed by your work in ${niche}.\n\nI wanted to reach out regarding ${promoteTopic} over at ${promoteSite}.\n\nWould you be open to a quick 2-minute chat this week?\n\nBest regards,\n${fromName}`
     });
 
   } catch (error: any) {

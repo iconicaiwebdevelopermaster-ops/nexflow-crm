@@ -1,25 +1,53 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import PageHeader from '@/components/layout/PageHeader';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Send, Users, CheckSquare, Square, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { 
+  Send, 
+  Sparkles, 
+  Bot, 
+  Users, 
+  CheckCircle2, 
+  Loader2, 
+  Mail, 
+  Building2, 
+  Globe, 
+  MapPin,
+  RefreshCw,
+  Zap
+} from 'lucide-react';
+
+interface Lead {
+  id: string;
+  name: string;
+  company: string;
+  email: string;
+  niche?: string;
+  city?: string;
+  website?: string;
+  status: string;
+}
 
 export default function ComposePage() {
-  const [leads, setLeads] = useState<any[]>([]);
-  const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
+  const router = useRouter();
+
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [selectedLeadId, setSelectedLeadId] = useState<string>('');
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [fetchingLeads, setFetchingLeads] = useState(true);
-  const { toast } = useToast();
+
+  const [loadingLeads, setLoadingLeads] = useState(true);
+  const [generatingAI, setGeneratingAI] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [toastMsg, setToastMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [aiProviderBadge, setAiProviderBadge] = useState<string | null>(null);
+
+  const showToast = (text: string, type: 'success' | 'error' = 'success') => {
+    setToastMsg({ type, text });
+    setTimeout(() => setToastMsg(null), 4000);
+  };
 
   useEffect(() => {
     fetchLeads();
@@ -27,290 +55,269 @@ export default function ComposePage() {
 
   const fetchLeads = async () => {
     try {
-      setFetchingLeads(true);
       const res = await fetch('/api/leads');
       const data = await res.json();
-      if (res.ok && data.leads) {
+      if (data.leads && data.leads.length > 0) {
         setLeads(data.leads);
-        // Default select all fresh/queued leads
-        const defaultSelected = data.leads.map((l: any) => l.id);
-        setSelectedLeadIds(defaultSelected);
+        setSelectedLeadId(data.leads[0].id);
+        setSelectedLead(data.leads[0]);
+        generateEmailForLead(data.leads[0]);
       }
-    } catch (err) {
-      console.error('Error fetching leads:', err);
+    } catch {
+      showToast('Failed to load leads', 'error');
     } finally {
-      setFetchingLeads(false);
+      setLoadingLeads(false);
     }
   };
 
-  const toggleSelectAll = () => {
-    if (selectedLeadIds.length === leads.length) {
-      setSelectedLeadIds([]);
-    } else {
-      setSelectedLeadIds(leads.map((l) => l.id));
-    }
+  const handleLeadChange = (id: string) => {
+    setSelectedLeadId(id);
+    const found = leads.find(l => l.id === id) || null;
+    setSelectedLead(found);
+    if (found) generateEmailForLead(found);
   };
 
-  const toggleSelectLead = (id: string) => {
-    setSelectedLeadIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  };
-
-  const handleAiGenerate = async () => {
-    if (selectedLeadIds.length === 0) {
-      toast({
-        title: 'Select Leads First',
-        description: 'Please select at least one lead to generate an AI email for.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    const firstLead = leads.find((l) => selectedLeadIds.includes(l.id));
-    setAiLoading(true);
+  const generateEmailForLead = async (lead: Lead) => {
+    setGeneratingAI(true);
+    setAiProviderBadge(null);
 
     try {
       const res = await fetch('/api/ai/generate-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          leadName: firstLead?.name || 'Prospect',
-          companyName: firstLead?.company || '',
-          niche: firstLead?.niche || 'B2B Services',
-          city: firstLead?.city || 'Local',
-          website: firstLead?.website || '',
-        }),
+          leadName: lead.name,
+          company: lead.company,
+          niche: lead.niche || 'B2B',
+          city: lead.city || 'Global',
+          website: lead.website || ''
+        })
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'AI Generation failed');
-
-      if (data.subject) setSubject(data.subject);
-      if (data.body) setBody(data.body);
-
-      toast({
-        title: 'AI Email Generated! ✨',
-        description: 'Subject and body populated. Feel free to edit before sending.',
-      });
-    } catch (err: any) {
-      toast({
-        title: 'AI Generation Error',
-        description: err.message,
-        variant: 'destructive',
-      });
+      if (res.ok && data.subject && data.body) {
+        setSubject(data.subject);
+        setBody(data.body);
+        setAiProviderBadge(data.provider || 'AI Generated');
+        showToast(`AI Copy Generated via ${data.provider || 'AI'}`);
+      }
+    } catch {
+      showToast('AI Generation failed, using template', 'error');
     } finally {
-      setAiLoading(false);
+      setGeneratingAI(false);
     }
   };
 
-  const handleSendBulk = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (selectedLeadIds.length === 0) {
-      toast({
-        title: 'No Recipients Selected',
-        description: 'Please check at least one lead from the list.',
-        variant: 'destructive',
-      });
+  const handleSendEmail = async () => {
+    if (!selectedLead || !subject.trim() || !body.trim()) {
+      showToast('Please select a lead and ensure subject/body are not empty', 'error');
       return;
     }
 
-    if (!subject.trim() || !body.trim()) {
-      toast({
-        title: 'Missing Fields',
-        description: 'Please write a subject line and email body.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setLoading(true);
+    setSending(true);
 
     try {
       const res = await fetch('/api/emails/bulk-send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          leadIds: selectedLeadIds, // EXACT BACKEND KEY MATCH
+          leadIds: [selectedLead.id],
           subject,
-          body,
-        }),
+          body
+        })
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Bulk dispatch failed');
+      if (!res.ok) throw new Error(data.error || 'Failed to dispatch email');
 
-      toast({
-        title: 'Bulk Dispatch Successful! 🎉',
-        description: `${data.sentCount || selectedLeadIds.length} cold emails sent. Lead status updated to SENT.`,
-      });
-
-      // Reset form
-      setSubject('');
-      setBody('');
-      fetchLeads();
+      showToast(`Email dispatched successfully to ${selectedLead.email}!`);
+      setTimeout(() => router.push('/email-history'), 1500);
     } catch (err: any) {
-      toast({
-        title: 'Dispatch Failed',
-        description: err.message,
-        variant: 'destructive',
-      });
+      showToast(err.message || 'Send failed', 'error');
     } finally {
-      setLoading(false);
+      setSending(false);
     }
   };
 
-  return (
-    <div className="space-y-6 max-w-6xl">
-      <PageHeader
-        title="Outreach Campaign Composer"
-        description="Personalize and dispatch cold outreach campaigns to multiple leads simultaneously."
-      />
+  if (loadingLeads) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+      </div>
+    );
+  }
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* LEFT COLUMN: RECIPIENT LEADS SELECTION (4 cols) */}
-        <div className="lg:col-span-5 space-y-4">
-          <Card className="p-4 bg-slate-900/60 border-slate-800">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-blue-400" />
-                <span className="font-semibold text-sm text-slate-200">Select Recipients</span>
-              </div>
-              <Badge variant="outline" className="border-blue-500/30 text-blue-400 text-xs">
-                {selectedLeadIds.length} / {leads.length} Selected
-              </Badge>
+  return (
+    <div className="max-w-5xl mx-auto space-y-8 pb-16">
+      
+      {toastMsg && (
+        <div className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-xl shadow-2xl border text-sm font-semibold flex items-center gap-2 animate-in fade-in ${
+          toastMsg.type === 'success' ? 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200' : 'bg-rose-950/90 border-rose-500/50 text-rose-200'
+        }`}>
+          {toastMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : null}
+          {toastMsg.text}
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-bold text-white tracking-tight">AI Campaign Composer</h1>
+            {aiProviderBadge && (
+              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/30 uppercase tracking-wide flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-purple-400" /> {aiProviderBadge}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-slate-400 mt-1">
+            Personalizes 1-to-1 cold emails using DeepSeek AI & your saved pitch context.
+          </p>
+        </div>
+
+        {selectedLead && (
+          <button
+            onClick={handleSendEmail}
+            disabled={sending || generatingAI}
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 via-cyan-500 to-blue-500 text-white font-bold text-xs shadow-xl shadow-cyan-500/20 hover:opacity-95 transition-all flex items-center gap-2"
+          >
+            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            Dispatch Email
+          </button>
+        )}
+      </div>
+
+      {leads.length === 0 ? (
+        <div className="p-12 text-center bg-[#050815] border border-white/10 rounded-2xl space-y-4">
+          <Users className="w-12 h-12 text-slate-500 mx-auto" />
+          <h2 className="text-lg font-bold text-white">No Leads Available</h2>
+          <p className="text-xs text-slate-400 max-w-md mx-auto">
+            Please harvest leads first using the Lead Scraper or import a CSV list before composing emails.
+          </p>
+          <button
+            onClick={() => router.push('/scraper')}
+            className="px-5 py-2.5 rounded-xl bg-cyan-500 text-white text-xs font-bold hover:bg-cyan-600 transition-all inline-flex items-center gap-2"
+          >
+            <Zap className="w-4 h-4" /> Go to Lead Scraper
+          </button>
+        </div>
+      ) : (
+        <div className="grid lg:grid-cols-3 gap-8">
+          
+          {/* Target Lead Selector Panel */}
+          <div className="bg-[#050815] border border-white/10 rounded-2xl p-6 space-y-6 h-fit">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                Select Target Lead ({leads.length})
+              </label>
+              <select
+                value={selectedLeadId}
+                onChange={(e) => handleLeadChange(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-[#03050c] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500/50"
+              >
+                {leads.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name} — {l.company}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {fetchingLeads ? (
-              <div className="py-12 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-blue-400" /> Loading leads...
-              </div>
-            ) : leads.length === 0 ? (
-              <div className="py-12 text-center text-xs text-slate-500">
-                No leads found. Scrape leads first from the Scraper menu.
-              </div>
-            ) : (
-              <div className="mt-3 space-y-2 max-h-[480px] overflow-y-auto pr-1">
-                <div
-                  onClick={toggleSelectAll}
-                  className="flex items-center justify-between p-2 rounded-lg bg-slate-950/80 border border-slate-800 hover:border-slate-700 cursor-pointer text-xs font-medium text-slate-300"
-                >
-                  <div className="flex items-center gap-2">
-                    {selectedLeadIds.length === leads.length ? (
-                      <CheckSquare className="w-4 h-4 text-blue-400" />
-                    ) : (
-                      <Square className="w-4 h-4 text-slate-500" />
-                    )}
-                    <span>Select All ({leads.length})</span>
-                  </div>
+            {selectedLead && (
+              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 text-xs">
+                <div>
+                  <div className="text-slate-500 text-[10px] font-semibold uppercase">Business Name</div>
+                  <div className="font-bold text-white text-sm">{selectedLead.company}</div>
                 </div>
 
-                {leads.map((lead) => {
-                  const isSelected = selectedLeadIds.includes(lead.id);
-                  return (
-                    <div
-                      key={lead.id}
-                      onClick={() => toggleSelectLead(lead.id)}
-                      className={`flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition text-xs ${
-                        isSelected
-                          ? 'bg-blue-600/10 border-blue-500/40 text-slate-100'
-                          : 'bg-slate-950/40 border-slate-800/80 text-slate-400 hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        {isSelected ? (
-                          <CheckSquare className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                        ) : (
-                          <Square className="w-4 h-4 text-slate-600 flex-shrink-0" />
-                        )}
-                        <div className="truncate">
-                          <div className="font-medium text-slate-200 truncate">{lead.name}</div>
-                          <div className="text-[11px] text-slate-500 truncate">{lead.email}</div>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="text-[10px] border-slate-800 text-slate-500">
-                        {lead.status}
-                      </Badge>
-                    </div>
-                  );
-                })}
+                <div className="flex items-center gap-2 text-slate-300">
+                  <Mail className="w-3.5 h-3.5 text-slate-500" />
+                  <span className="font-mono text-[11px] text-cyan-300">{selectedLead.email}</span>
+                </div>
+
+                {selectedLead.city && (
+                  <div className="flex items-center gap-2 text-slate-400">
+                    <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                    <span>{selectedLead.city}</span>
+                  </div>
+                )}
+
+                {selectedLead.website && (
+                  <div className="flex items-center gap-2 text-slate-400 truncate">
+                    <Globe className="w-3.5 h-3.5 text-slate-500" />
+                    <span className="truncate">{selectedLead.website.replace('https://', '')}</span>
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  <button
+                    onClick={() => generateEmailForLead(selectedLead)}
+                    disabled={generatingAI}
+                    className="w-full py-2.5 rounded-lg border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-200 text-xs font-semibold transition-all flex items-center justify-center gap-2"
+                  >
+                    {generatingAI ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                    Regenerate AI Copy
+                  </button>
+                </div>
               </div>
             )}
-          </Card>
-        </div>
+          </div>
 
-        {/* RIGHT COLUMN: EMAIL COMPOSER (7 cols) */}
-        <div className="lg:col-span-7 space-y-4">
-          <Card className="p-5 bg-slate-900/60 border-slate-800 space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-sm text-slate-200">Write / Generate Email</span>
-              <Button
-                type="button"
-                onClick={handleAiGenerate}
-                disabled={aiLoading}
-                variant="outline"
-                className="border-purple-500/30 text-purple-300 hover:bg-purple-500/10 text-xs h-8"
-              >
-                {aiLoading ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Personalizing...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-3.5 h-3.5 mr-1.5 text-purple-400" /> AI Personalize (GPT-4o)
-                  </>
-                )}
-              </Button>
+          {/* Email Editor Box */}
+          <div className="lg:col-span-2 bg-[#050815] border border-white/10 rounded-2xl p-6 space-y-6">
+            
+            {/* Subject */}
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">Subject Line</label>
+              <input
+                type="text"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Email Subject Line..."
+                className="w-full px-4 py-2.5 bg-[#03050c] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500/50 font-medium"
+              />
             </div>
 
-            <form onSubmit={handleSendBulk} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Subject Line</Label>
-                <Input
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  placeholder="Quick question about {{company}}'s client acquisition..."
-                  className="bg-slate-950 border-slate-800 text-xs text-slate-100"
-                />
+            {/* Email Body */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-medium text-slate-300">Email Body (AI Generated Copy)</label>
+                {generatingAI && (
+                  <span className="text-[11px] text-cyan-400 flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" /> DeepSeek Writing Copy...
+                  </span>
+                )}
               </div>
+              <textarea
+                rows={12}
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                placeholder="Type your email content..."
+                className="w-full p-4 bg-[#03050c] border border-white/10 rounded-xl text-xs text-slate-200 leading-relaxed focus:outline-none focus:border-cyan-500/50 font-mono resize-none"
+              />
+            </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Email Body</Label>
-                <Textarea
-                  rows={10}
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  placeholder="Hi {{name}}, I noticed {{company}} is located in {{city}}..."
-                  className="bg-slate-950 border-slate-800 text-xs text-slate-100 leading-relaxed font-sans"
-                />
-              </div>
+            {/* Bottom Actions */}
+            <div className="flex items-center justify-between pt-2 border-t border-white/5">
+              <span className="text-[11px] text-slate-500">
+                Email will be sent with human-like delays via connected channel.
+              </span>
 
-              <div className="pt-2 flex items-center justify-between border-t border-slate-800/80">
-                <div className="text-xs text-slate-400">
-                  Sending to <b className="text-blue-400">{selectedLeadIds.length}</b> recipients
-                </div>
+              <button
+                onClick={handleSendEmail}
+                disabled={sending || generatingAI}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 via-cyan-500 to-blue-500 text-white font-bold text-xs shadow-lg shadow-cyan-500/20 hover:opacity-95 transition-all flex items-center gap-2"
+              >
+                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                Send Now
+              </button>
+            </div>
 
-                <Button
-                  type="submit"
-                  disabled={loading || selectedLeadIds.length === 0}
-                  className="bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs h-10 px-5"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Dispatching...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4 mr-2" /> Dispatch Bulk Campaign
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </Card>
+          </div>
+
         </div>
-      </div>
+      )}
+
     </div>
   );
 }
