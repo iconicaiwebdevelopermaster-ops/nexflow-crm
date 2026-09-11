@@ -38,7 +38,7 @@ export async function GET() {
     const sessionEmail = session?.user?.email || 'iconicaiwebdevelopermaster@gmail.com';
     const user = await getOrCreateUser(sessionEmail);
 
-    // Fetch sent emails
+    // Query EmailSent Table
     const emailsSent = await prisma.emailSent.findMany({
       where: { userId: user.id },
       include: { lead: true },
@@ -46,23 +46,22 @@ export async function GET() {
       take: 100
     });
 
-    // Fetch activity logs for sent emails
-    const emailActivities = await prisma.activity.findMany({
-      where: {
-        type: 'EMAIL_SENT',
-        lead: { userId: user.id }
-      },
-      include: { lead: true },
-      orderBy: { createdAt: 'desc' },
+    // Query Leads with status SENT as fallback
+    const sentLeads = await prisma.lead.findMany({
+      where: { userId: user.id, status: 'SENT' },
+      orderBy: { updatedAt: 'desc' },
       take: 100
     });
 
     const formatted: any[] = [];
+    const seenEmails = new Set<string>();
 
     for (const e of emailsSent) {
+      const emailAddr = e.recipientEmail || e.lead?.email || 'Contact';
+      seenEmails.add(emailAddr.toLowerCase());
       formatted.push({
         id: e.id,
-        recipient: e.lead?.email || e.recipientEmail || 'Unknown',
+        recipient: emailAddr,
         leadName: e.lead?.name || 'Contact',
         company: e.lead?.company || 'Company',
         subject: e.subject || 'Outreach Email',
@@ -72,22 +71,22 @@ export async function GET() {
       });
     }
 
-    for (const act of emailActivities) {
-      if (!formatted.some(f => f.recipient === act.lead?.email)) {
+    for (const lead of sentLeads) {
+      if (!seenEmails.has(lead.email.toLowerCase())) {
         formatted.push({
-          id: act.id,
-          recipient: act.lead?.email || 'Contact',
-          leadName: act.lead?.name || 'Contact',
-          company: act.lead?.company || 'Company',
-          subject: act.title || 'Outreach Campaign',
-          body: 'Sent via NexFlow Campaign Dispatcher',
+          id: lead.id,
+          recipient: lead.email,
+          leadName: lead.name,
+          company: lead.company,
+          subject: `Campaign Pitch (${lead.company})`,
+          body: 'Outreach campaign dispatched',
           status: 'SENT',
-          sentAt: act.createdAt
+          sentAt: lead.updatedAt
         });
       }
     }
 
-    return NextResponse.json({ success: true, emails: formatted });
+    return NextResponse.json({ success: true, count: formatted.length, emails: formatted });
   } catch (error: any) {
     return NextResponse.json({ success: true, emails: [], error: error.message });
   }
