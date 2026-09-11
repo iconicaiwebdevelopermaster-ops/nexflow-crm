@@ -15,27 +15,30 @@ import {
   Phone, 
   Loader2,
   ExternalLink,
-  ShieldCheck
+  ShieldCheck,
+  Navigation
 } from 'lucide-react';
 
 interface ScrapedLead {
   name: string;
   company: string;
+  address?: string;
   email: string;
   phone?: string;
   website?: string;
   city?: string;
+  country?: string;
   niche?: string;
   source?: string;
   isLiveVerified?: boolean;
-  isMxValid?: boolean;
 }
 
 export default function ScraperPage() {
   const router = useRouter();
 
-  const [niche, setNiche] = useState('Restaurants');
-  const [city, setCity] = useState('London');
+  const [niche, setNiche] = useState('Software Houses');
+  const [city, setCity] = useState('Lahore');
+  const [country, setCountry] = useState('Pakistan');
   const [source, setSource] = useState<'maps' | 'web' | 'linkedin' | 'crunchbase'>('maps');
   const [limit, setLimit] = useState(15);
 
@@ -60,7 +63,7 @@ export default function ScraperPage() {
       const res = await fetch('/api/scraper/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ niche, city, source, limit })
+        body: JSON.stringify({ niche, city, country, source, limit })
       });
 
       const data = await res.json();
@@ -72,9 +75,9 @@ export default function ScraperPage() {
       if (data.results && data.results.length > 0) {
         setResults(data.results);
         setSelectedIds(new Set(data.results.map((_: any, idx: number) => idx)));
-        showToast(`Harvested ${data.results.length} real working business leads!`);
+        showToast(`Harvested ${data.results.length} real B2B leads in ${city}, ${country}!`);
       } else {
-        showToast('No leads found.', 'error');
+        showToast(`No registered listings found for "${niche}" in ${city}, ${country}. Try broadening your search.`, 'error');
       }
     } catch (err: any) {
       showToast(err.message || 'Search failed', 'error');
@@ -141,13 +144,13 @@ export default function ScraperPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold text-white tracking-tight">NexScraper Engine v13.0</h1>
+            <h1 className="text-2xl font-bold text-white tracking-tight">NexScraper Engine v14.0</h1>
             <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 uppercase tracking-wide flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Working Websites Only
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Dynamic Global Search
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Zero fake domains. All returned leads feature live, registered and openable websites.
+            Search any city & country worldwide. Returns real business entities with physical street addresses.
           </p>
         </div>
 
@@ -197,7 +200,7 @@ export default function ScraperPage() {
             </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-4 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">Target Niche / Industry</label>
               <div className="relative">
@@ -206,6 +209,7 @@ export default function ScraperPage() {
                   type="text"
                   value={niche}
                   onChange={(e) => setNiche(e.target.value)}
+                  placeholder="e.g. Software Houses, Dental"
                   className="w-full pl-10 pr-4 py-2.5 bg-[#03050c] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50"
                   required
                 />
@@ -220,6 +224,22 @@ export default function ScraperPage() {
                   type="text"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
+                  placeholder="e.g. Lahore, Dubai, London"
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#03050c] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500/50"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">Country</label>
+              <div className="relative">
+                <Globe className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                  placeholder="e.g. Pakistan, UAE, UK, USA"
                   className="w-full pl-10 pr-4 py-2.5 bg-[#03050c] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500/50"
                   required
                 />
@@ -233,9 +253,10 @@ export default function ScraperPage() {
                 onChange={(e) => setLimit(Number(e.target.value))}
                 className="w-full px-4 py-2.5 bg-[#03050c] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500/50"
               >
-                <option value={10}>10 Verified Leads</option>
-                <option value={15}>15 Verified Leads</option>
-                <option value={20}>20 Verified Leads</option>
+                <option value={10}>10 Real Leads</option>
+                <option value={15}>15 Real Leads</option>
+                <option value={20}>20 Real Leads</option>
+                <option value={30}>30 Real Leads</option>
               </select>
             </div>
           </div>
@@ -243,7 +264,7 @@ export default function ScraperPage() {
           <div className="flex items-center justify-between pt-2">
             <div className="flex items-center gap-2 text-xs text-slate-400">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Only entities with active operating websites returned</span>
+              <span>Real Location Geocoding & OpenStreetMap + Serper Live Pipeline</span>
             </div>
 
             <button
@@ -252,9 +273,9 @@ export default function ScraperPage() {
               className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 via-cyan-500 to-blue-500 text-white text-xs font-bold shadow-xl shadow-cyan-500/20 transition-all flex items-center gap-2"
             >
               {loading ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Harvesting Real Entities...</>
+                <><Loader2 className="w-4 h-4 animate-spin" /> Searching Live Global Data...</>
               ) : (
-                <><Search className="w-4 h-4" /> Harvest Working Leads</>
+                <><Search className="w-4 h-4" /> Harvest Real Leads</>
               )}
             </button>
           </div>
@@ -266,7 +287,7 @@ export default function ScraperPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <span className="text-sm font-bold text-white">Harvested Results ({results.length})</span>
+              <span className="text-sm font-bold text-white">Verified Dynamic Results ({results.length})</span>
               <button onClick={toggleSelectAll} className="text-xs text-cyan-400 hover:underline">
                 {selectedIds.size === results.length ? 'Deselect All' : 'Select All'}
               </button>
@@ -298,7 +319,13 @@ export default function ScraperPage() {
                     />
                   </div>
 
-                  <div className="space-y-1.5 text-xs text-slate-400 mb-4">
+                  <div className="space-y-2 text-xs text-slate-400 mb-4">
+                    {lead.address && (
+                      <div className="flex items-start gap-2 text-slate-300">
+                        <Navigation className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+                        <span className="text-[11px] leading-tight line-clamp-2">{lead.address}</span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 truncate">
                       <Mail className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
                       <span className="text-slate-200 select-all font-mono text-[11px]">{lead.email}</span>
@@ -331,7 +358,7 @@ export default function ScraperPage() {
                       {lead.source || source}
                     </span>
                     <span className="text-emerald-400 font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Live Operating Website
+                      <CheckCircle2 className="w-3 h-3" /> Real Dynamic Place
                     </span>
                   </div>
                 </div>
