@@ -57,6 +57,18 @@ enum CampaignStatus {
 }
 
 model User {
+  fromName         String?
+  promoteSite      String?
+  promoteTopic     String?
+  dailyLimit       Int?            @default(40)
+  mapsApiKey       String?
+  cseApiKey        String?
+  cseCx            String?
+  aiEnabled        Boolean?        @default(false)
+  aiProvider       String?         @default("openai")
+  aiModel          String?
+  deepseekApiKey   String?
+  aiExtraPrompt    String?
   id            String          @id @default(uuid())
   name          String?
   email         String          @unique
