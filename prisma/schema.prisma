@@ -57,6 +57,16 @@ enum CampaignStatus {
 }
 
 model User {
+  id               String          @id @default(cuid())
+  name             String?
+  email            String          @unique
+  password         String
+  role             UserRole        @default(USER)
+  lastLoginAt      DateTime?
+  smtpHost         String?
+  smtpPort         Int?
+  smtpUser         String?
+  smtpPass         String?
   fromName         String?
   promoteSite      String?
   promoteTopic     String?
@@ -70,27 +80,17 @@ model User {
   deepseekApiKey   String?
   openaiApiKey     String?
   aiExtraPrompt    String?
-  aiProvider       String?         @default("openai")
-  id            String          @id @default(uuid())
-  name          String?
-  email         String          @unique
-  password      String
-  role          UserRole        @default(USER)
-  lastLoginAt   DateTime?       @map("last_login_at")
-  smtpHost      String?         @map("smtp_host")
-  smtpPort      Int?            @map("smtp_port")
-  smtpUser      String?         @map("smtp_user")
-  smtpPass      String?         @map("smtp_pass")
-  createdAt     DateTime        @default(now()) @map("created_at")
-  updatedAt     DateTime        @updatedAt @map("updated_at")
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   leads            Lead[]
-  templates        Template[]
-  emailsSent       EmailSent[]
-  tasks            Task[]
-  gmailAccounts    GmailAccount[]
   campaigns        Campaign[]
+  templates        Template[]
+  tasks            Task[]
+  activities       Activity[]
+  gmailAccounts    GmailAccount[]
   scraperSearches  ScraperSearch[]
+  adminLogs        AdminLog[]
 
   @@map("users")
 }
