@@ -38,7 +38,7 @@ export async function GET() {
     const sessionEmail = session?.user?.email || 'iconicaiwebdevelopermaster@gmail.com';
     const user = await getOrCreateUser(sessionEmail);
 
-    // Query EmailSent Table
+    // 1. Fetch from EmailSent Table
     const emailsSent = await prisma.emailSent.findMany({
       where: { userId: user.id },
       include: { lead: true },
@@ -46,7 +46,7 @@ export async function GET() {
       take: 100
     });
 
-    // Query Leads with status SENT as fallback
+    // 2. Fetch Leads with status SENT
     const sentLeads = await prisma.lead.findMany({
       where: { userId: user.id, status: 'SENT' },
       orderBy: { updatedAt: 'desc' },
@@ -54,14 +54,13 @@ export async function GET() {
     });
 
     const formatted: any[] = [];
-    const seenEmails = new Set<string>();
+    const seenIds = new Set<string>();
 
     for (const e of emailsSent) {
-      const emailAddr = e.recipientEmail || e.lead?.email || 'Contact';
-      seenEmails.add(emailAddr.toLowerCase());
+      seenIds.add(e.leadId || e.id);
       formatted.push({
         id: e.id,
-        recipient: emailAddr,
+        recipient: e.recipientEmail || e.lead?.email || 'Contact',
         leadName: e.lead?.name || 'Contact',
         company: e.lead?.company || 'Company',
         subject: e.subject || 'Outreach Email',
@@ -72,14 +71,14 @@ export async function GET() {
     }
 
     for (const lead of sentLeads) {
-      if (!seenEmails.has(lead.email.toLowerCase())) {
+      if (!seenIds.has(lead.id)) {
         formatted.push({
           id: lead.id,
           recipient: lead.email,
           leadName: lead.name,
           company: lead.company,
-          subject: `Campaign Pitch (${lead.company})`,
-          body: 'Outreach campaign dispatched',
+          subject: `Outreach Campaign Pitch (${lead.company})`,
+          body: 'Dispatched via NexFlow Campaign Engine',
           status: 'SENT',
           sentAt: lead.updatedAt
         });

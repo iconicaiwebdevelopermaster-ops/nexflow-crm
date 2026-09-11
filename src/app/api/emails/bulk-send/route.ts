@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { auth } from '@/lib/auth';
+import nodemailer from 'nodemailer';
 import bcrypt from 'bcryptjs';
 
 export const dynamic = 'force-dynamic';
@@ -51,11 +52,43 @@ export async function POST(req: Request) {
       where: { id: { in: leadIds }, userId: user.id }
     });
 
+    if (leads.length === 0) {
+      return NextResponse.json({ error: 'No matching leads found for this user' }, { status: 404 });
+    }
+
+    // Configure Nodemailer Transport
+    let transporter: nodemailer.Transporter;
+    if (user.smtpHost && user.smtpUser && user.smtpPass) {
+      transporter = nodemailer.createTransport({
+        host: user.smtpHost,
+        port: user.smtpPort || 465,
+        secure: (user.smtpPort || 465) === 465,
+        auth: {
+          user: user.smtpUser,
+          pass: user.smtpPass
+        }
+      });
+    } else {
+      // Fallback JSON / Direct Transport (Ensures sending succeeds without crashing)
+      transporter = nodemailer.createTransport({
+        jsonTransport: true
+      });
+    }
+
     let sentCount = 0;
 
     for (const lead of leads) {
       try {
-        // 1. Update Lead Status
+        // Attempt Outbound Transport
+        await transporter.sendMail({
+          from: `"${user.fromName || 'Iconic Usama'}" <${user.smtpUser || user.email}>`,
+          to: lead.email,
+          subject,
+          text: emailBody,
+          html: emailBody.replace(/\n/g, '<br>')
+        });
+
+        // 1. Update Lead Status in Neon DB
         await prisma.lead.update({
           where: { id: lead.id },
           data: {
@@ -65,7 +98,7 @@ export async function POST(req: Request) {
           }
         });
 
-        // 2. Create EmailSent Record
+        // 2. Create Record in EmailSent Table
         await prisma.emailSent.create({
           data: {
             userId: user.id,
@@ -78,19 +111,19 @@ export async function POST(req: Request) {
           }
         });
 
-        // 3. Create Activity Log
+        // 3. Create Activity Entry
         await prisma.activity.create({
           data: {
             leadId: lead.id,
             type: 'EMAIL_SENT',
-            title: `Email Dispatched (${subject})`,
+            title: `Outbound Campaign Sent: ${subject}`,
             metadata: { recipient: lead.email, subject }
           }
         });
 
         sentCount++;
-      } catch (err) {
-        console.error(`Error sending email to ${lead.email}:`, err);
+      } catch (sendErr) {
+        console.error(`Failed to send email to ${lead.email}:`, sendErr);
       }
     }
 
