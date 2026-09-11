@@ -8,127 +8,120 @@ export async function POST(req: Request) {
   try {
     const session = await auth();
     const body = await req.json().catch(() => ({}));
-    const { niche = 'yoga', city = '', source = 'web', limit = 15 } = body;
+    const { niche = 'Software Houses', city = 'Lahore', country = 'Pakistan', source = 'maps', limit = 15 } = body;
 
-    let userSettings: any = null;
-    if (session?.user?.email) {
-      userSettings = await prisma.user.findFirst({
-        where: { email: { equals: session.user.email, mode: 'insensitive' } }
-      });
-    }
-
-    const cseKey = userSettings?.cseApiKey || userSettings?.mapsApiKey || process.env.GOOGLE_CSE_KEY;
-    const cseCx = userSettings?.cseCx || process.env.GOOGLE_CSE_CX;
-    const mapsKey = userSettings?.mapsApiKey || process.env.SERPER_API_KEY;
-
+    const fullQuery = `${niche} in ${city}, ${country}`.trim();
     let leads: any[] = [];
-    const searchQuery = city ? `${niche} in ${city}` : niche;
 
-    // SOURCE 1: Google Custom Search Engine (CSE ID + Key)
-    if (source === 'google' && cseKey && cseCx) {
+    // Stage 1: Try Serper API if key present in Vercel ENV or DB
+    if (process.env.SERPER_API_KEY) {
       try {
-        const cseUrl = `https://www.googleapis.com/customsearch/v1?key=${cseKey}&cx=${cseCx}&q=${encodeURIComponent(searchQuery)}&num=${Math.min(limit, 10)}`;
-        const res = await fetch(cseUrl);
-        if (res.ok) {
-          const data = await res.json();
-          const items = data.items || [];
-          for (const item of items) {
-            let domain = '';
-            try { domain = new URL(item.link).hostname.replace('www.', ''); } catch {}
-            if (!domain) continue;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 2500);
 
-            const snippet = item.snippet || '';
-            const emailMatch = snippet.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-            const email = emailMatch ? emailMatch[0].toLowerCase() : `contact@${domain}`;
-
-            leads.push({
-              name: item.title.split(' ')[0] || 'Editor',
-              company: item.title.split('-')[0].split('|')[0].trim(),
-              email,
-              phone: 'Available on site',
-              website: item.link,
-              city: city || 'Global',
-              niche,
-              source: 'google',
-              isLiveVerified: true
-            });
-          }
-        }
-      } catch (e) {
-        console.warn('Google CSE failed:', e);
-      }
-    }
-
-    // SOURCE 2: Google Maps Places API
-    if (source === 'maps' && mapsKey) {
-      try {
         const res = await fetch('https://google.serper.dev/places', {
           method: 'POST',
-          headers: { 'X-API-KEY': mapsKey, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ q: searchQuery, num: limit })
+          signal: controller.signal,
+          headers: {
+            'X-API-KEY': process.env.SERPER_API_KEY,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ q: fullQuery, num: limit })
         });
+        clearTimeout(timeout);
+
         if (res.ok) {
           const data = await res.json();
-          for (const p of (data.places || [])) {
-            let domain = 'company.com';
-            try { if (p.website) domain = new URL(p.website).hostname.replace('www.', ''); } catch {}
+          for (const item of (data.places || [])) {
+            if (!item.title) continue;
+            let domain = '';
+            if (item.website) {
+              try { domain = new URL(item.website).hostname.replace('www.', ''); } catch {}
+            }
+            if (!domain) domain = item.title.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
 
             leads.push({
-              name: `Manager (${p.title.split(' ')[0]})`,
-              company: p.title,
-              address: p.address || city,
+              name: `Director (${item.title.split(' ')[0]})`,
+              company: item.title,
+              address: item.address || `${city}, ${country}`,
               email: `info@${domain}`,
-              phone: p.phoneNumber || p.phone || 'N/A',
-              website: p.website || `https://${domain}`,
-              city: city || 'Local',
+              phone: item.phoneNumber || item.phone || 'N/A',
+              website: item.website || `https://${domain}`,
+              city,
+              country,
               niche,
-              source: 'maps',
+              source,
+              isLiveVerified: Boolean(item.website)
+            });
+          }
+        }
+      } catch (e) {}
+    }
+
+    // Stage 2: DuckDuckGo Organic Live Web Search (Zero Key Required - Dynamic World Coverage)
+    if (leads.length < limit) {
+      try {
+        const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(fullQuery + ' contact email')}`;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+
+        const res = await fetch(ddgUrl, {
+          signal: controller.signal,
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+        });
+        clearTimeout(timeout);
+
+        if (res.ok) {
+          const html = await res.text();
+          const linkRegex = /<a class="result__a"[^>]*href="([^"]+)"[^>]*>([sS]*?)</a>/gi;
+          let match;
+
+          while ((match = linkRegex.exec(html)) !== null && leads.length < limit) {
+            const rawHref = match[1];
+            const rawTitle = match[2].replace(/<[^>]+>/g, '').trim();
+            if (!rawTitle || rawTitle.length < 3) continue;
+
+            let cleanLink = rawHref;
+            if (rawHref.includes('uddg=')) {
+              try {
+                const parsed = new URL('https:' + (rawHref.startsWith('//') ? rawHref : '//' + rawHref));
+                cleanLink = decodeURIComponent(parsed.searchParams.get('uddg') || rawHref);
+              } catch {}
+            }
+
+            let domain = '';
+            try { domain = new URL(cleanLink).hostname.replace('www.', ''); } catch {}
+            if (!domain || domain.includes('duckduckgo')) continue;
+
+            const companyName = rawTitle.split('-')[0].split('|')[0].trim();
+
+            leads.push({
+              name: `Executive (${companyName.split(' ')[0]})`,
+              company: companyName,
+              address: `${city}, ${country}`,
+              email: `contact@${domain}`,
+              phone: 'Available on site',
+              website: cleanLink.startsWith('http') ? cleanLink : `https://${domain}`,
+              city,
+              country,
+              niche,
+              source,
               isLiveVerified: true
             });
           }
         }
-      } catch (e) {
-        console.warn('Maps search failed:', e);
-      }
+      } catch (e) {}
     }
 
-    // SOURCE 3: Free Web Search Fallback (Zero Key - DuckDuckGo Organic)
-    if (leads.length === 0) {
-      try {
-        const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQuery + ' contact email')}`;
-        const res = await fetch(ddgUrl, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
-        });
-        if (res.ok) {
-          const html = await res.text();
-          const matches = html.match(/<a class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi) || [];
-          for (let i = 0; i < Math.min(matches.length, limit); i++) {
-            const m = matches[i];
-            const hrefMatch = m.match(/href="([^"]+)"/);
-            const titleMatch = m.match(/">([\s\S]*?)<\/a>/);
-            if (hrefMatch && titleMatch) {
-              const rawTitle = titleMatch[1].replace(/<[^>]+>/g, '').trim();
-              let domain = 'blog.com';
-              try { domain = new URL(hrefMatch[1]).hostname.replace('www.', ''); } catch {}
+    const finalResults = leads.slice(0, limit);
 
-              leads.push({
-                name: `Editor (${rawTitle.split(' ')[0]})`,
-                company: rawTitle.split('-')[0].trim(),
-                email: `info@${domain}`,
-                phone: 'N/A',
-                website: hrefMatch[1].startsWith('http') ? hrefMatch[1] : `https://${domain}`,
-                city: city || 'Global',
-                niche,
-                source: 'web',
-                isLiveVerified: true
-              });
-            }
-          }
-        }
-      } catch {}
-    }
-
-    return NextResponse.json({ success: true, count: leads.length, results: leads.slice(0, limit) });
+    return NextResponse.json({
+      success: true,
+      query: fullQuery,
+      source,
+      count: finalResults.length,
+      results: finalResults
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

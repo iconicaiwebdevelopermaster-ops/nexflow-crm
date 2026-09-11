@@ -29,7 +29,6 @@ async function getOrCreateUser(email: string, name?: string) {
       }
     });
   }
-
   return user;
 }
 
@@ -37,24 +36,23 @@ export async function GET() {
   try {
     const session = await auth();
     const sessionEmail = session?.user?.email || 'iconicaiwebdevelopermaster@gmail.com';
-
     const user = await getOrCreateUser(sessionEmail, session?.user?.name || undefined);
 
     const settings = {
-      fromName: (user as any).fromName || 'Iconic Usama',
+      fromName: user.fromName || 'Iconic Usama',
       fromEmail: user.email,
-      promoteSite: (user as any).promoteSite || 'besttradelogic.com',
-      promoteTopic: (user as any).promoteTopic || 'AI Web Development & CRM Automation',
-      dailyLimit: (user as any).dailyLimit || 40,
-      mapsApiKey: (user as any).mapsApiKey || '',
-      cseApiKey: (user as any).cseApiKey || '',
-      cseCx: (user as any).cseCx || '',
-      aiEnabled: (user as any).aiEnabled ?? true,
-      aiProvider: (user as any).aiProvider || 'deepseek',
-      aiModel: (user as any).aiModel || '',
-      deepseekApiKey: (user as any).deepseekApiKey || '',
-      openaiApiKey: (user as any).openaiApiKey || '',
-      aiExtraPrompt: (user as any).aiExtraPrompt || ''
+      promoteSite: user.promoteSite || 'besttradelogic.com',
+      promoteTopic: user.promoteTopic || 'AI Web Development & CRM Automation',
+      dailyLimit: user.dailyLimit || 40,
+      mapsApiKey: user.mapsApiKey || '',
+      cseApiKey: user.cseApiKey || '',
+      cseCx: user.cseCx || '',
+      aiEnabled: user.aiEnabled ?? true,
+      aiProvider: user.aiProvider || 'deepseek',
+      aiModel: user.aiModel || '',
+      deepseekApiKey: user.deepseekApiKey || '',
+      openaiApiKey: user.openaiApiKey || '',
+      aiExtraPrompt: user.aiExtraPrompt || ''
     };
 
     return NextResponse.json({ success: true, settings });
@@ -67,7 +65,6 @@ export async function POST(req: Request) {
   try {
     const session = await auth();
     const sessionEmail = session?.user?.email || 'iconicaiwebdevelopermaster@gmail.com';
-
     const user = await getOrCreateUser(sessionEmail, session?.user?.name || undefined);
     const body = await req.json();
 
