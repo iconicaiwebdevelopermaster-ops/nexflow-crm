@@ -13,13 +13,11 @@ export async function POST(req: Request) {
     const targetNiche = niche.trim();
     const targetCity = city.trim();
     const targetCountry = country ? country.trim() : '';
-    const fullQuery = `${targetNiche} in ${targetCity}, ${targetCountry}`.trim();
+    const fullQuery = \ in \, \.trim();
 
     let leads: any[] = [];
 
-    // =========================================================================
-    // STAGE 1: GOOGLE SERPER PLACES API (6 Seconds Timeout)
-    // =========================================================================
+    // STAGE 1: SERPER GOOGLE PLACES
     if (process.env.SERPER_API_KEY && process.env.SERPER_API_KEY.length > 5) {
       try {
         const controller = new AbortController();
@@ -49,12 +47,12 @@ export async function POST(req: Request) {
             if (!domain) domain = item.title.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
 
             leads.push({
-              name: `Executive (${item.title.split(' ')[0]})`,
+              name: Executive (\),
               company: item.title,
-              address: item.address || `${targetCity}, ${targetCountry}`,
-              email: `contact@${domain}`,
+              address: item.address || \, \,
+              email: contact@\,
               phone: item.phoneNumber || item.phone || '+92 42 35780000',
-              website: item.website || `https://${domain}`,
+              website: item.website || https://\,
               city: targetCity,
               country: targetCountry,
               niche: targetNiche,
@@ -63,32 +61,24 @@ export async function POST(req: Request) {
             });
           }
         }
-      } catch (e) {
-        console.error('Serper live search error:', e);
-      }
+      } catch (e) {}
     }
 
-    // =========================================================================
-    // STAGE 2: GEMINI 1.5 FLASH LIVE AI GROUNDED SEARCH
-    // =========================================================================
+    // STAGE 2: GEMINI AI GROUNDING
     if (leads.length < limit && process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.length > 5) {
       try {
         const geminiLeads = await fetchGeminiLiveLeads(targetNiche, targetCity, targetCountry, process.env.GEMINI_API_KEY);
         if (geminiLeads && geminiLeads.length > 0) {
           leads.push(...geminiLeads);
         }
-      } catch (e) {
-        console.error('Gemini live search error:', e);
-      }
+      } catch (e) {}
     }
 
-    // =========================================================================
-    // STAGE 3: OPENSTREETMAP GLOBAL BUSINESS DIRECTORY (100% Free Live API, No IP Block)
-    // =========================================================================
+    // STAGE 3: OPENSTREETMAP DIRECTORY
     if (leads.length < limit) {
       try {
-        const osmQuery = `${targetNiche}, ${targetCity}, ${targetCountry}`;
-        const osmUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(osmQuery)}&format=json&addressdetails=1&extratags=1&limit=20`;
+        const osmQuery = \, \, \;
+        const osmUrl = https://nominatim.openstreetmap.org/search?q=\&format=json&addressdetails=1&extratags=1&limit=20;
 
         const res = await fetch(osmUrl, {
           headers: {
@@ -110,19 +100,19 @@ export async function POST(req: Request) {
             let domain = '';
             if (website) {
               try {
-                domain = new URL(website.startsWith('http') ? website : `https://${website}`).hostname.replace('www.', '');
+                domain = new URL(website.startsWith('http') ? website : https://\).hostname.replace('www.', '');
               } catch {}
             }
             if (!domain) {
               domain = companyName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
             }
 
-            const cleanEmail = email || `info@${domain}`;
-            const cleanWebsite = website || `https://${domain}`;
+            const cleanEmail = email || info@\;
+            const cleanWebsite = website || https://\;
 
             if (!leads.some((l) => l.company.toLowerCase() === companyName.toLowerCase())) {
               leads.push({
-                name: `Director (${companyName.split(' ')[0]})`,
+                name: Director (\),
                 company: companyName,
                 address: place.display_name,
                 email: cleanEmail,
@@ -137,14 +127,10 @@ export async function POST(req: Request) {
             }
           }
         }
-      } catch (e) {
-        console.error('OSM directory live search error:', e);
-      }
+      } catch (e) {}
     }
 
-    // =========================================================================
-    // STAGE 4: HIGH-PRECISION REAL-WORLD BUSINESS FAIL-SAFE (Ensures 0 leads NEVER happen)
-    // =========================================================================
+    // STAGE 4: FAIL-SAFE GUARANTEE
     if (leads.length === 0) {
       leads = generateSmartRealLeads(targetNiche, targetCity, targetCountry);
     }
@@ -164,26 +150,26 @@ export async function POST(req: Request) {
 }
 
 async function fetchGeminiLiveLeads(niche: string, city: string, country: string, apiKey: string) {
-  const prompt = `Search and extract 10 real active B2B companies for "${niche}" in "${city}, ${country}".
+  const prompt = Search and extract 10 real active B2B companies for "\" in "\, \".
 Return ONLY a valid JSON array of objects without markdown backticks.
 Schema:
 [
   {
     "name": "Full Person Name or Director",
     "company": "Real Business Name",
-    "address": "Real Street Address in ${city}",
+    "address": "Real Street Address in \",
     "email": "Contact Email",
     "phone": "Real Phone Number",
     "website": "Full website starting with https://",
-    "city": "${city}",
-    "country": "${country}",
-    "niche": "${niche}",
+    "city": "\",
+    "country": "\",
+    "niche": "\",
     "source": "Gemini Live B2B",
     "isLiveVerified": true
   }
-]`;
+];
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const url = https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -196,7 +182,7 @@ Schema:
 
   const data = await res.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const cleanedText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+  const cleanedText = text.replace(/`json/gi, '').replace(/`/g, '').trim();
 
   const parsed = JSON.parse(cleanedText);
   return Array.isArray(parsed) ? parsed : [];
@@ -265,12 +251,12 @@ function generateSmartRealLeads(niche: string, city: string, country: string) {
 
   return [
     {
-      name: `Managing Director (${city})`,
-      company: `${city} ${niche} Enterprise Group`,
-      address: `Central Commercial Hub, ${city}, ${country}`,
-      email: `contact@${niche.toLowerCase().replace(/\s+/g, '')}-${city.toLowerCase().replace(/\s+/g, '')}.com`,
+      name: Managing Director (\),
+      company: \ \ Enterprise Group,
+      address: Central Commercial Hub, \, \,
+      email: contact@\-\.com,
       phone: '+1 (555) 019-2831',
-      website: `https://${niche.toLowerCase().replace(/\s+/g, '')}-${city.toLowerCase().replace(/\s+/g, '')}.com`,
+      website: https://\-\.com,
       city,
       country,
       niche,
