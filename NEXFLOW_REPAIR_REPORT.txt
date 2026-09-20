@@ -1,0 +1,168 @@
+=================================================================
+       NEXFLOW CRM v21.2 — MASTER AUDIT & REPAIR REPORT
+       Generated on: 9/20/2026, 2:20:56 PM
+       Project Root: D:\Own-Projects\NEXFLOW CRM
+=================================================================
+
+--- Step 1: Ensuring Core Engine Files ---
+  [SKIP] prisma/schema.prisma (already exists)
+  [SKIP] src/lib/prisma.ts (already exists)
+  [SKIP] src/lib/auth.ts (already exists)
+  [SKIP] src/lib/quota.ts (already exists)
+  [SKIP] src/lib/gmail-sender.ts (already exists)
+  [SKIP] src/middleware.ts (already exists)
+  [SKIP] src/app/api/auth/[...nextauth]/route.ts (already exists)
+  [SKIP] src/app/api/scraper/search/route.ts (already exists)
+
+--- Step 2: Checking Critical Files ---
+  [OK] src/app/api/ai/generate-email/route.ts
+  [OK] src/app/api/emails/bulk-send/route.ts
+  [OK] src/app/api/emails/send/route.ts
+  [OK] src/app/api/cron/followup/route.ts
+  [OK] src/app/api/cron/reply-check/route.ts
+  [OK] src/app/api/dashboard/stats/route.ts
+  [OK] src/app/api/leads/bulk/route.ts
+  [OK] src/app/api/leads/export/route.ts
+  [OK] src/app/api/leads/update-status/route.ts
+  [OK] src/app/api/settings/smtp/route.ts
+  [OK] src/app/api/stripe/checkout/route.ts
+  [OK] src/app/api/stripe/webhook/route.ts
+  [OK] src/app/api/auth/gmail/route.ts
+  [OK] src/app/api/auth/gmail/callback/route.ts
+  [OK] src/app/api/auth/signup/route.ts
+  [OK] src/app/api/mrwoo/users/actions/route.ts
+  [OK] src/app/api/scraper/import/route.ts
+  [OK] src/app/api/scraper/save/route.ts
+  [OK] src/app/api/tasks/route.ts
+  [OK] src/app/page.tsx
+  [OK] src/app/(auth)/login/page.tsx
+  [OK] src/app/(auth)/signup/page.tsx
+  [OK] src/app/(dashboard)/dashboard/page.tsx
+  [OK] src/app/(dashboard)/leads/page.tsx
+  [OK] src/app/(dashboard)/settings/page.tsx
+  [OK] src/app/(dashboard)/compose/page.tsx
+  [OK] src/app/(dashboard)/scraper/page.tsx
+  [OK] src/app/(dashboard)/email-history/page.tsx
+  [OK] src/app/(dashboard)/templates/page.tsx
+  [OK] src/app/(dashboard)/tasks/page.tsx
+  [OK] src/app/(dashboard)/onboarding/page.tsx
+  [OK] src/app/mrwoo/page.tsx
+
+--- Step 3: Running Prisma DB Push & Generate ---
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+Datasource "db": PostgreSQL database "neondb", schema "public" at "ep-aged-bread-axi7c860.c-4.us-east-2.aws.neon.tech"
+
+The database is already in sync with the Prisma schema.
+
+Running generate... (Use --skip-generate to skip the generators)
+[2K[1A[2K[GRunning generate... - Prisma Client
+[2K[1A[2K[G✔ Generated Prisma Client (v5.22.0) to .\node_modules\@prisma\client in 510ms
+
+
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+
+✔ Generated Prisma Client (v5.22.0) to .\node_modules\@prisma\client in 471ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Want real-time updates to your database without manual polling? Discover how with Pulse: https://pris.ly/tip-0-pulse
+
+
+
+--- Step 4: Testing Next.js Build ---
+  ▲ Next.js 14.2.35
+  - Environments: .env.local, .env
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+   Generating static pages (0/30) ...
+   Generating static pages (7/30) 
+   Generating static pages (14/30) 
+   Generating static pages (22/30) 
+ ✓ Generating static pages (30/30)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ƒ /                                    190 B          96.8 kB
+├ ○ /_not-found                          873 B          88.2 kB
+├ ƒ /api/ai/generate-email               0 B                0 B
+├ ƒ /api/auth/[...nextauth]              0 B                0 B
+├ ƒ /api/auth/gmail                      0 B                0 B
+├ ƒ /api/auth/gmail/callback             0 B                0 B
+├ ƒ /api/auth/signup                     0 B                0 B
+├ ƒ /api/cron/followup                   0 B                0 B
+├ ƒ /api/cron/reply-check                0 B                0 B
+├ ○ /api/dashboard/settings              2.2 kB         89.5 kB
+├ ƒ /api/dashboard/stats                 0 B                0 B
+├ ƒ /api/emails                          0 B                0 B
+├ ƒ /api/emails/bulk-send                0 B                0 B
+├ ƒ /api/emails/send                     0 B                0 B
+├ ƒ /api/leads                           0 B                0 B
+├ ƒ /api/leads/[id]                      0 B                0 B
+├ ƒ /api/leads/bulk                      0 B                0 B
+├ ƒ /api/leads/export                    0 B                0 B
+├ ƒ /api/leads/update-status             0 B                0 B
+├ ƒ /api/mrwoo/users/actions             0 B                0 B
+├ ƒ /api/scraper/import                  0 B                0 B
+├ ƒ /api/scraper/save                    0 B                0 B
+├ ƒ /api/scraper/search                  0 B                0 B
+├ ƒ /api/settings                        0 B                0 B
+├ ƒ /api/settings/smtp                   0 B                0 B
+├ ƒ /api/stripe/checkout                 0 B                0 B
+├ ƒ /api/stripe/webhook                  0 B                0 B
+├ ƒ /api/tasks                           0 B                0 B
+├ ƒ /api/tasks/[id]                      0 B                0 B
+├ ƒ /compose                             4.56 kB        91.9 kB
+├ ƒ /dashboard                           190 B          96.8 kB
+├ ƒ /email-history                       2.37 kB        98.9 kB
+├ ƒ /leads                               5.5 kB          111 kB
+├ ƒ /leads/[id]                          2.83 kB         137 kB
+├ ƒ /leads/import                        3.5 kB          109 kB
+├ ƒ /leads/kanban                        16.6 kB         113 kB
+├ ƒ /leads/new                           2.83 kB         137 kB
+├ ƒ /login                               2.25 kB         140 kB
+├ ƒ /mrwoo                               190 B          96.8 kB
+├ ƒ /mrwoo/analytics                     162 B          87.5 kB
+├ ƒ /mrwoo/channels                      162 B          87.5 kB
+├ ƒ /mrwoo/emails                        162 B          87.5 kB
+├ ƒ /mrwoo/leads                         162 B          87.5 kB
+├ ƒ /mrwoo/logs                          162 B          87.5 kB
+├ ƒ /mrwoo/pipeline                      162 B          87.5 kB
+├ ƒ /mrwoo/scrapes                       162 B          87.5 kB
+├ ƒ /mrwoo/settings                      162 B          87.5 kB
+├ ƒ /mrwoo/users                         838 B          88.2 kB
+├ ƒ /onboarding                          2.47 kB          99 kB
+├ ƒ /scraper                             5.34 kB        92.7 kB
+├ ƒ /settings                            3.54 kB        90.9 kB
+├ ƒ /signup                              2.38 kB         140 kB
+├ ƒ /tasks                               3.69 kB        99.6 kB
+└ ƒ /templates                           162 B          87.5 kB
++ First Load JS shared by all            87.3 kB
+  ├ chunks/117-9a5aab9ebbb58fa9.js       31.7 kB
+  ├ chunks/fd9d1056-aaf43ca2153ca2be.js  53.6 kB
+  └ other shared chunks (total)          1.95 kB
+
+
+ƒ Middleware                             78.2 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+🎉 BUILD SUCCESSFUL!
+
+=================================================================
+       FINAL REPAIR SUMMARY
+=================================================================
+  Files Created:  0
+  Files Skipped:  8
+  Files Missing:  0
+
+Report successfully written to: D:\Own-Projects\NEXFLOW CRM\NEXFLOW_REPAIR_REPORT.txt
+=================================================================

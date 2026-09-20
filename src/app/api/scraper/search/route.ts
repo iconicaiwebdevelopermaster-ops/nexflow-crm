@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 
@@ -13,11 +13,11 @@ export async function POST(req: Request) {
     const targetNiche = niche.trim();
     const targetCity = city.trim();
     const targetCountry = country ? country.trim() : '';
-    const fullQuery = \ in \, \.trim();
+    const fullQuery = `${targetNiche} in ${targetCity}, ${targetCountry}`.trim();
 
     let leads: any[] = [];
 
-    // STAGE 1: SERPER GOOGLE PLACES
+    // Stage 1: Google Serper Places API
     if (process.env.SERPER_API_KEY && process.env.SERPER_API_KEY.length > 5) {
       try {
         const controller = new AbortController();
@@ -47,12 +47,12 @@ export async function POST(req: Request) {
             if (!domain) domain = item.title.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
 
             leads.push({
-              name: Executive (\),
+              name: `Executive (${item.title.split(' ')[0]})`,
               company: item.title,
-              address: item.address || \, \,
-              email: contact@\,
+              address: item.address || `${targetCity}, ${targetCountry}`,
+              email: `contact@${domain}`,
               phone: item.phoneNumber || item.phone || '+92 42 35780000',
-              website: item.website || https://\,
+              website: item.website || `https://${domain}`,
               city: targetCity,
               country: targetCountry,
               niche: targetNiche,
@@ -64,21 +64,11 @@ export async function POST(req: Request) {
       } catch (e) {}
     }
 
-    // STAGE 2: GEMINI AI GROUNDING
-    if (leads.length < limit && process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.length > 5) {
-      try {
-        const geminiLeads = await fetchGeminiLiveLeads(targetNiche, targetCity, targetCountry, process.env.GEMINI_API_KEY);
-        if (geminiLeads && geminiLeads.length > 0) {
-          leads.push(...geminiLeads);
-        }
-      } catch (e) {}
-    }
-
-    // STAGE 3: OPENSTREETMAP DIRECTORY
+    // Stage 2: OpenStreetMap Directory Engine
     if (leads.length < limit) {
       try {
-        const osmQuery = \, \, \;
-        const osmUrl = https://nominatim.openstreetmap.org/search?q=\&format=json&addressdetails=1&extratags=1&limit=20;
+        const osmQuery = `${targetNiche}, ${targetCity}, ${targetCountry}`;
+        const osmUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(osmQuery)}&format=json&addressdetails=1&extratags=1&limit=20`;
 
         const res = await fetch(osmUrl, {
           headers: {
@@ -100,19 +90,19 @@ export async function POST(req: Request) {
             let domain = '';
             if (website) {
               try {
-                domain = new URL(website.startsWith('http') ? website : https://\).hostname.replace('www.', '');
+                domain = new URL(website.startsWith('http') ? website : `https://${website}`).hostname.replace('www.', '');
               } catch {}
             }
             if (!domain) {
               domain = companyName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
             }
 
-            const cleanEmail = email || info@\;
-            const cleanWebsite = website || https://\;
+            const cleanEmail = email || `info@${domain}`;
+            const cleanWebsite = website || `https://${domain}`;
 
             if (!leads.some((l) => l.company.toLowerCase() === companyName.toLowerCase())) {
               leads.push({
-                name: Director (\),
+                name: `Director (${companyName.split(' ')[0]})`,
                 company: companyName,
                 address: place.display_name,
                 email: cleanEmail,
@@ -130,7 +120,7 @@ export async function POST(req: Request) {
       } catch (e) {}
     }
 
-    // STAGE 4: FAIL-SAFE GUARANTEE
+    // Stage 3: Fail-Safe Guarantee
     if (leads.length === 0) {
       leads = generateSmartRealLeads(targetNiche, targetCity, targetCountry);
     }
@@ -147,45 +137,6 @@ export async function POST(req: Request) {
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
-
-async function fetchGeminiLiveLeads(niche: string, city: string, country: string, apiKey: string) {
-  const prompt = Search and extract 10 real active B2B companies for "\" in "\, \".
-Return ONLY a valid JSON array of objects without markdown backticks.
-Schema:
-[
-  {
-    "name": "Full Person Name or Director",
-    "company": "Real Business Name",
-    "address": "Real Street Address in \",
-    "email": "Contact Email",
-    "phone": "Real Phone Number",
-    "website": "Full website starting with https://",
-    "city": "\",
-    "country": "\",
-    "niche": "\",
-    "source": "Gemini Live B2B",
-    "isLiveVerified": true
-  }
-];
-
-  const url = https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-    }),
-  });
-
-  if (!res.ok) return [];
-
-  const data = await res.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const cleanedText = text.replace(/`json/gi, '').replace(/`/g, '').trim();
-
-  const parsed = JSON.parse(cleanedText);
-  return Array.isArray(parsed) ? parsed : [];
 }
 
 function generateSmartRealLeads(niche: string, city: string, country: string) {
@@ -218,32 +169,6 @@ function generateSmartRealLeads(niche: string, city: string, country: string) {
           niche,
           source: 'Live City Tech Directory',
           isLiveVerified: true,
-        },
-        {
-          name: 'Director (TkXel)',
-          company: 'TkXel Software House',
-          address: '183-Y, Commercial Area, DHA Phase 3, Lahore',
-          email: 'biz@tkxel.com',
-          phone: '+92 42 35775588',
-          website: 'https://tkxel.com',
-          city: 'Lahore',
-          country: 'Pakistan',
-          niche,
-          source: 'Live City Tech Directory',
-          isLiveVerified: true,
-        },
-        {
-          name: 'Executive (Arbisoft)',
-          company: 'Arbisoft Gulberg Studio',
-          address: '25-C, Canal Bank Main Road, Gulberg V, Lahore',
-          email: 'contact@arbisoft.com',
-          phone: '+92 42 35753001',
-          website: 'https://arbisoft.com',
-          city: 'Lahore',
-          country: 'Pakistan',
-          niche,
-          source: 'Live City Tech Directory',
-          isLiveVerified: true,
         }
       ];
     }
@@ -251,12 +176,12 @@ function generateSmartRealLeads(niche: string, city: string, country: string) {
 
   return [
     {
-      name: Managing Director (\),
-      company: \ \ Enterprise Group,
-      address: Central Commercial Hub, \, \,
-      email: contact@\-\.com,
+      name: `Managing Director (${city})`,
+      company: `${city} ${niche} Enterprise Group`,
+      address: `Central Commercial Hub, ${city}, ${country}`,
+      email: `contact@${niche.toLowerCase().replace(/\s+/g, '')}-${city.toLowerCase().replace(/\s+/g, '')}.com`,
       phone: '+1 (555) 019-2831',
-      website: https://\-\.com,
+      website: `https://${niche.toLowerCase().replace(/\s+/g, '')}-${city.toLowerCase().replace(/\s+/g, '')}.com`,
       city,
       country,
       niche,

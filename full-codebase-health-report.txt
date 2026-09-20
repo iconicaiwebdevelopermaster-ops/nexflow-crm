@@ -1,0 +1,119 @@
+﻿===============================================================================
+ 🔥 NEXFLOW CRM v21.0 - FULL CODEBASE HEALTH & INTEGRITY AUDIT
+ Audit Timestamp: 2026-09-20 12:09:15
+ Location: D:\Own-Projects\NEXFLOW CRM
+===============================================================================
+
+===============================================================================
+ 🔍 1. PRISMA DATABASE SCHEMA INTEGRITY
+===============================================================================
+Prisma Schema Validation Output:
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+The schema at prisma\schema.prisma is valid ≡ƒÜÇ
+node.exe : npm notice
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm notice:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+npm notice New minor version of npm available! 11.12.1 -> 11.19.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.19.1
+npm notice To update run: npm install -g npm@11.19.1
+npm notice
+
+===============================================================================
+ 🔍 2. APP ROUTER ROUTES SCAN
+===============================================================================
+Found 26 Page Routes:
+   📄 Page: \src\app\page.tsx
+   📄 Page: \src\app\(auth)\login\page.tsx
+   📄 Page: \src\app\(auth)\signup\page.tsx
+   📄 Page: \src\app\(dashboard)\compose\page.tsx
+   📄 Page: \src\app\(dashboard)\dashboard\page.tsx
+   📄 Page: \src\app\(dashboard)\email-history\page.tsx
+   📄 Page: \src\app\(dashboard)\leads\page.tsx
+   📄 Page: \src\app\(dashboard)\leads\import\page.tsx
+   📄 Page: \src\app\(dashboard)\leads\kanban\page.tsx
+   📄 Page: \src\app\(dashboard)\leads\new\page.tsx
+   📄 Page: \src\app\(dashboard)\leads\[id]\page.tsx
+   📄 Page: \src\app\(dashboard)\onboarding\page.tsx
+   📄 Page: \src\app\(dashboard)\scraper\page.tsx
+   📄 Page: \src\app\(dashboard)\settings\page.tsx
+   📄 Page: \src\app\(dashboard)\tasks\page.tsx
+   📄 Page: \src\app\(dashboard)\templates\page.tsx
+   📄 Page: \src\app\mrwoo\page.tsx
+   📄 Page: \src\app\mrwoo\analytics\page.tsx
+   📄 Page: \src\app\mrwoo\channels\page.tsx
+   📄 Page: \src\app\mrwoo\emails\page.tsx
+   📄 Page: \src\app\mrwoo\leads\page.tsx
+   📄 Page: \src\app\mrwoo\logs\page.tsx
+   📄 Page: \src\app\mrwoo\pipeline\page.tsx
+   📄 Page: \src\app\mrwoo\scrapes\page.tsx
+   📄 Page: \src\app\mrwoo\settings\page.tsx
+   📄 Page: \src\app\mrwoo\users\page.tsx
+
+===============================================================================
+ 🔍 3. API ENDPOINTS INTEGRITY
+===============================================================================
+Found 26 API Routes:
+   ❌ MISSING ESSENTIAL API: api\auth\[...nextauth]\route.ts
+   ✅ Essential API Present: api\scraper\search\route.ts
+   ✅ Essential API Present: api\emails\bulk-send\route.ts
+   ✅ Essential API Present: api\settings\route.ts
+   ✅ Essential API Present: api\dashboard\stats\route.ts
+   ✅ Essential API Present: api\cron\followup\route.ts
+   ✅ Essential API Present: api\cron\reply-check\route.ts
+   ✅ Essential API Present: api\stripe\checkout\route.ts
+
+===============================================================================
+ 🔍 4. CORE LIBRARIES & UTILITIES CHECK
+===============================================================================
+   ✅ Core Utility Present: src\lib\prisma.ts
+   ✅ Core Utility Present: src\lib\auth.ts
+   ⚠️ MISSING UTILITY: src\lib\quota.ts
+   ⚠️ MISSING UTILITY: src\lib\gmail-sender.ts
+
+===============================================================================
+ 🔍 5. NEXT.JS COMPILATION & BUILD TEST
+===============================================================================
+Executing Next.js dry build test...
+Next.js Build Process Output:
+  Γû▓ Next.js 14.2.35
+  - Environments: .env.local, .env
+
+   Creating an optimized production build ...
+node.exe : Failed to compile.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Failed to compile.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+./src/app/api/scraper/search/route.ts
+Error: 
+  [31mx[0m Expected unicode escape
+    ,-[[36;1;4mD:\Own-Projects\NEXFLOW CRM\src\app\api\scraper\search\route.ts[0m:13:1]
+ [2m13[0m |     const targetNiche = niche.trim();
+ [2m14[0m |     const targetCity = city.trim();
+ [2m15[0m |     const targetCountry = country ? country.trim() : '';
+ [2m16[0m |     const fullQuery = \ in \, \.trim();
+    : [31;1m                      ^[0m
+ [2m17[0m | 
+ [2m18[0m |     let leads: any[] = [];
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/api/scraper/search/route.ts
+
+
+> Build failed because of webpack errors
+
+===============================================================================
+ END OF CODEBASE HEALTH AUDIT
+===============================================================================
