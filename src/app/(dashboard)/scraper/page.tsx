@@ -1,370 +1,256 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from "react";
 import { 
-  Search, 
-  MapPin, 
-  Globe, 
-  Briefcase, 
-  Layers, 
-  Download, 
-  CheckCircle2, 
-  Building2, 
-  Mail, 
-  Phone, 
-  Loader2,
-  ExternalLink,
-  ShieldCheck,
-  Navigation
-} from 'lucide-react';
-
-interface ScrapedLead {
-  name: string;
-  company: string;
-  address?: string;
-  email: string;
-  phone?: string;
-  website?: string;
-  city?: string;
-  country?: string;
-  niche?: string;
-  source?: string;
-  isLiveVerified?: boolean;
-}
+  Building2, MapPin, Mail, Phone, Globe, Linkedin, Facebook, 
+  Twitter, Instagram, Search, Sparkles, CheckCircle2, Download 
+} from "lucide-react";
 
 export default function ScraperPage() {
-  const router = useRouter();
-
-  const [niche, setNiche] = useState('Software Houses');
-  const [city, setCity] = useState('Lahore');
-  const [country, setCountry] = useState('Pakistan');
-  const [source, setSource] = useState<'maps' | 'web' | 'linkedin' | 'crunchbase'>('maps');
-  const [limit, setLimit] = useState(15);
-
+  const [niche, setNiche] = useState("Software Houses");
+  const [city, setCity] = useState("London");
+  const [country, setCountry] = useState("United Kingdom");
+  const [limit, setLimit] = useState(30);
   const [loading, setLoading] = useState(false);
+  const [leads, setLeads] = useState<any[]>([]);
+  const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
   const [importing, setImporting] = useState(false);
-  const [results, setResults] = useState<ScrapedLead[]>([]);
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [toastMsg, setToastMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [message, setMessage] = useState("");
 
-  const showToast = (text: string, type: 'success' | 'error' = 'success') => {
-    setToastMsg({ type, text });
-    setTimeout(() => setToastMsg(null), 4000);
-  };
-
-  const handleSearch = async (e: React.FormEvent) => {
+  const handleHarvest = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setResults([]);
-    setSelectedIds(new Set());
+    setMessage("");
+    setLeads([]);
+    setSelectedLeads([]);
 
     try {
-      const res = await fetch('/api/scraper/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ niche, city, country, source, limit })
+      const res = await fetch("/api/scraper/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ niche, city, country, limit }),
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to harvest leads");
 
-      if (!res.ok) {
-        throw new Error(data.error || 'Server error during search');
-      }
-
-      if (data.results && data.results.length > 0) {
-        setResults(data.results);
-        setSelectedIds(new Set(data.results.map((_: any, idx: number) => idx)));
-        showToast(`Harvested ${data.results.length} real B2B leads in ${city}, ${country}!`);
-      } else {
-        showToast(`No registered listings found for "${niche}" in ${city}, ${country}. Try broadening your search.`, 'error');
-      }
+      setLeads(data.leads || []);
+      setSelectedLeads((data.leads || []).map((_: any, idx: number) => idx));
+      setMessage(`Harvested ${data.leads?.length || 0} real leads in ${city}, ${country}!`);
     } catch (err: any) {
-      showToast(err.message || 'Search failed', 'error');
+      setMessage(`Error: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const toggleSelect = (index: number) => {
-    const next = new Set(selectedIds);
-    if (next.has(index)) next.delete(index);
-    else next.add(index);
-    setSelectedIds(next);
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedIds.size === results.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(results.map((_, idx) => idx)));
-    }
-  };
-
-  const handleImportToCRM = async () => {
-    if (selectedIds.size === 0) {
-      showToast('Select at least one lead to import', 'error');
-      return;
-    }
-
+  const handleImport = async () => {
+    if (selectedLeads.length === 0) return;
     setImporting(true);
-    const leadsToImport = Array.from(selectedIds).map((idx) => results[idx]);
 
     try {
-      const res = await fetch('/api/scraper/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leads: leadsToImport })
+      const leadsToImport = selectedLeads.map((idx) => leads[idx]);
+      const res = await fetch("/api/scraper/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leads: leadsToImport }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Import failed');
+      if (!res.ok) throw new Error(data.error || "Import failed");
 
-      showToast(`Successfully imported ${data.count} leads to CRM!`);
-      setTimeout(() => router.push('/leads'), 1500);
+      setMessage(`✓ ${data.importedCount || selectedLeads.length} Leads imported to CRM! (Skipped duplicates)`);
     } catch (err: any) {
-      showToast(err.message || 'Import failed', 'error');
+      setMessage(`Import Error: ${err.message}`);
     } finally {
       setImporting(false);
     }
   };
 
+  const toggleSelect = (index: number) => {
+    if (selectedLeads.includes(index)) {
+      setSelectedLeads(selectedLeads.filter((i) => i !== index));
+    } else {
+      setSelectedLeads([...selectedLeads, index]);
+    }
+  };
+
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-16">
-      
-      {toastMsg && (
-        <div className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-xl shadow-2xl border text-sm font-semibold flex items-center gap-2 animate-in fade-in ${
-          toastMsg.type === 'success' ? 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200' : 'bg-rose-950/90 border-rose-500/50 text-rose-200'
-        }`}>
-          {toastMsg.text}
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">
+          Live B2B Lead Harvester v22.0
+        </h1>
+        <p className="text-slate-400 mt-1">
+          Scrape real physical businesses, working websites, phones, emails & social profiles.
+        </p>
+      </div>
+
+      <form onSubmit={handleHarvest} className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="text-xs font-semibold text-slate-400">Target Niche / Industry</label>
+            <input
+              type="text"
+              value={niche}
+              onChange={(e) => setNiche(e.target.value)}
+              placeholder="e.g. Software Houses, Dental Clinics"
+              className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-400">City / Region</label>
+            <input
+              type="text"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="e.g. London, Dubai, New York"
+              className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-400">Country</label>
+            <input
+              type="text"
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              placeholder="e.g. United Kingdom, USA, UAE"
+              className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-400">Harvest Depth (Count)</label>
+            <select
+              value={limit}
+              onChange={(e) => setLimit(Number(e.target.value))}
+              className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
+            >
+              <option value={10}>10 Real Leads</option>
+              <option value={30}>30 Real Leads</option>
+              <option value={50}>50 Real Leads</option>
+              <option value={100}>100 Real Leads</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between pt-2">
+          <div className="text-xs text-emerald-400 flex items-center gap-1.5">
+            <Sparkles className="w-4 h-4" /> Multi-Source Pipeline: Google Places + Gemini Grounding + OpenStreetMap
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-semibold text-sm px-6 py-3 rounded-xl transition-all shadow-lg shadow-cyan-500/10 flex items-center gap-2"
+          >
+            {loading ? "Harvesting Real Data..." : `Harvest ${limit} Real Leads`}
+          </button>
+        </div>
+      </form>
+
+      {message && (
+        <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl text-sm text-cyan-400 flex items-center justify-between">
+          <span>{message}</span>
+          {leads.length > 0 && (
+            <button
+              onClick={handleImport}
+              disabled={importing || selectedLeads.length === 0}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-2 rounded-lg text-xs flex items-center gap-1.5"
+            >
+              <Download className="w-3.5 h-3.5" />
+              {importing ? "Importing..." : `Import Selected (${selectedLeads.length}) to CRM`}
+            </button>
+          )}
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold text-white tracking-tight">NexScraper Engine v14.0</h1>
-            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 uppercase tracking-wide flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Dynamic Global Search
-            </span>
-          </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Search any city & country worldwide. Returns real business entities with physical street addresses.
-          </p>
-        </div>
-
-        {results.length > 0 && (
-          <button
-            onClick={handleImportToCRM}
-            disabled={importing || selectedIds.size === 0}
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-500 text-white text-xs font-bold shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-2"
-          >
-            {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            Import {selectedIds.size} Selected to CRM
-          </button>
-        )}
-      </div>
-
-      {/* Form */}
-      <div className="bg-[#050815] border border-white/10 rounded-2xl p-6 shadow-xl">
-        <form onSubmit={handleSearch} className="space-y-6">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Select Data Source Channel</label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { id: 'maps', label: 'Google Maps / Places', icon: MapPin, color: 'text-amber-400', desc: 'Real Local Business Registry' },
-                { id: 'linkedin', label: 'LinkedIn X-Ray', icon: Briefcase, color: 'text-blue-400', desc: 'Founders, CEOs & Directors' },
-                { id: 'web', label: 'Web Harvester', icon: Globe, color: 'text-cyan-400', desc: 'Corporate Contacts & SaaS' },
-                { id: 'crunchbase', label: 'Crunchbase X-Ray', icon: Layers, color: 'text-purple-400', desc: 'Funded Startups & Agencies' },
-              ].map((src) => {
-                const Icon = src.icon;
-                const isSelected = source === src.id;
-                return (
-                  <button
-                    key={src.id}
-                    type="button"
-                    onClick={() => setSource(src.id as any)}
-                    className={`p-3.5 rounded-xl border text-left transition-all ${
-                      isSelected ? 'border-cyan-500/50 bg-cyan-500/10 shadow-lg shadow-cyan-500/10' : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.05]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Icon className={`w-4 h-4 ${src.color}`} />
-                      <span className="text-xs font-bold text-white">{src.label}</span>
-                    </div>
-                    <p className="text-[11px] text-slate-400">{src.desc}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">Target Niche / Industry</label>
-              <div className="relative">
-                <Building2 className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={niche}
-                  onChange={(e) => setNiche(e.target.value)}
-                  placeholder="e.g. Software Houses, Dental"
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#03050c] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">City / Region</label>
-              <div className="relative">
-                <MapPin className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="e.g. Lahore, Dubai, London"
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#03050c] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500/50"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">Country</label>
-              <div className="relative">
-                <Globe className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value)}
-                  placeholder="e.g. Pakistan, UAE, UK, USA"
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#03050c] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500/50"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">Harvest Depth</label>
-              <select
-                value={limit}
-                onChange={(e) => setLimit(Number(e.target.value))}
-                className="w-full px-4 py-2.5 bg-[#03050c] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500/50"
+      {leads.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {leads.map((lead, idx) => {
+            const isSelected = selectedLeads.includes(idx);
+            return (
+              <div
+                key={idx}
+                onClick={() => toggleSelect(idx)}
+                className={`cursor-pointer bg-slate-900/50 border rounded-2xl p-5 space-y-3 transition-all relative ${
+                  isSelected ? "border-cyan-500/80 bg-slate-900/90 shadow-lg shadow-cyan-500/5" : "border-slate-800/80 hover:border-slate-700"
+                }`}
               >
-                <option value={10}>10 Real Leads</option>
-                <option value={15}>15 Real Leads</option>
-                <option value={20}>20 Real Leads</option>
-                <option value={30}>30 Real Leads</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between pt-2">
-            <div className="flex items-center gap-2 text-xs text-slate-400">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Real Location Geocoding & OpenStreetMap + Serper Live Pipeline</span>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 via-cyan-500 to-blue-500 text-white text-xs font-bold shadow-xl shadow-cyan-500/20 transition-all flex items-center gap-2"
-            >
-              {loading ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Searching Live Global Data...</>
-              ) : (
-                <><Search className="w-4 h-4" /> Harvest Real Leads</>
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
-
-      {/* Results */}
-      {results.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-bold text-white">Verified Dynamic Results ({results.length})</span>
-              <button onClick={toggleSelectAll} className="text-xs text-cyan-400 hover:underline">
-                {selectedIds.size === results.length ? 'Deselect All' : 'Select All'}
-              </button>
-            </div>
-            <span className="text-xs text-slate-400">{selectedIds.size} Selected</span>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {results.map((lead, idx) => {
-              const isSelected = selectedIds.has(idx);
-              return (
-                <div
-                  key={idx}
-                  onClick={() => toggleSelect(idx)}
-                  className={`p-5 rounded-2xl border cursor-pointer transition-all relative ${
-                    isSelected ? 'bg-[#080d24] border-cyan-500/40 shadow-lg shadow-cyan-500/10' : 'bg-[#050815]/60 border-white/5 hover:border-white/10 opacity-80'
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1 pr-2">
-                      <h3 className="text-sm font-bold text-white truncate">{lead.name}</h3>
-                      <p className="text-xs font-medium text-cyan-400 truncate">{lead.company}</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => {}}
-                      className="w-4 h-4 rounded border-white/20 text-cyan-500 bg-[#03050c]"
-                    />
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1 pr-6">
+                    <h3 className="font-bold text-slate-100 text-base flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-cyan-400 shrink-0" />
+                      {lead.name}
+                    </h3>
+                    <p className="text-xs text-slate-400">{lead.niche}</p>
                   </div>
-
-                  <div className="space-y-2 text-xs text-slate-400 mb-4">
-                    {lead.address && (
-                      <div className="flex items-start gap-2 text-slate-300">
-                        <Navigation className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
-                        <span className="text-[11px] leading-tight line-clamp-2">{lead.address}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 truncate">
-                      <Mail className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
-                      <span className="text-slate-200 select-all font-mono text-[11px]">{lead.email}</span>
-                    </div>
-                    {lead.phone && (
-                      <div className="flex items-center gap-2 truncate">
-                        <Phone className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
-                        <span>{lead.phone}</span>
-                      </div>
-                    )}
-                    {lead.website && (
-                      <div className="flex items-center gap-2 truncate">
-                        <Globe className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
-                        <a 
-                          href={lead.website} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-cyan-400 hover:underline flex items-center gap-1 truncate font-semibold"
-                        >
-                          {lead.website.replace('https://', '').replace('http://', '').replace('www.', '')}
-                          <ExternalLink className="w-3 h-3 inline flex-shrink-0" />
-                        </a>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between pt-3 border-t border-white/5 text-[10px]">
-                    <span className="px-2 py-0.5 rounded bg-white/5 text-slate-400 border border-white/5 uppercase">
-                      {lead.source || source}
-                    </span>
-                    <span className="text-emerald-400 font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Real Dynamic Place
-                    </span>
-                  </div>
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => {}}
+                    className="w-4 h-4 rounded text-cyan-500 focus:ring-0 bg-slate-950 border-slate-700"
+                  />
                 </div>
-              );
-            })}
-          </div>
+
+                <div className="space-y-1.5 text-xs text-slate-300 pt-2 border-t border-slate-800/60">
+                  <div className="flex items-center gap-2 text-slate-400">
+                    <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                    <span className="truncate">{lead.address}</span>
+                  </div>
+
+                  {lead.email && (
+                    <div className="flex items-center gap-2 text-cyan-300">
+                      <Mail className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      <span className="truncate">{lead.email}</span>
+                    </div>
+                  )}
+
+                  {lead.phone && (
+                    <div className="flex items-center gap-2 text-slate-300">
+                      <Phone className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                      <span>{lead.phone}</span>
+                    </div>
+                  )}
+
+                  {lead.website && (
+                    <div className="flex items-center gap-2 text-indigo-400 pt-1">
+                      <Globe className="w-3.5 h-3.5 shrink-0" />
+                      <a href={lead.website} target="_blank" rel="noreferrer" className="hover:underline truncate">
+                        {lead.website}
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 pt-2 border-t border-slate-800/60">
+                  {lead.socials?.linkedin && (
+                    <a href={lead.socials.linkedin} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-cyan-400">
+                      <Linkedin className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                  {lead.socials?.facebook && (
+                    <a href={lead.socials.facebook} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-blue-400">
+                      <Facebook className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                  {lead.socials?.twitter && (
+                    <a href={lead.socials.twitter} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-sky-400">
+                      <Twitter className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                  <span className="ml-auto text-[10px] text-slate-500 bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">
+                    {lead.source}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
