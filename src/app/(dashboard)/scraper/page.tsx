@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { 
   Building2, MapPin, Mail, Phone, Globe, Linkedin, Facebook, 
-  Twitter, Instagram, Search, Sparkles, CheckCircle2, Download 
+  Twitter, Instagram, Sparkles, Download, RefreshCw 
 } from "lucide-react";
 
 export default function ScraperPage() {
@@ -16,6 +16,14 @@ export default function ScraperPage() {
   const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
   const [importing, setImporting] = useState(false);
   const [message, setMessage] = useState("");
+
+  const handleCityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setCity(val);
+    if (val.toLowerCase().includes("london")) setCountry("United Kingdom");
+    if (val.toLowerCase().includes("new york") || val.toLowerCase().includes("austin")) setCountry("USA");
+    if (val.toLowerCase().includes("dubai")) setCountry("UAE");
+  };
 
   const handleHarvest = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +44,7 @@ export default function ScraperPage() {
 
       setLeads(data.leads || []);
       setSelectedLeads((data.leads || []).map((_: any, idx: number) => idx));
-      setMessage(`Harvested ${data.leads?.length || 0} real leads in ${city}, ${country}!`);
+      setMessage(`Harvested ${data.leads?.length || 0} verified real leads for ${niche}!`);
     } catch (err: any) {
       setMessage(`Error: ${err.message}`);
     } finally {
@@ -79,10 +87,10 @@ export default function ScraperPage() {
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 space-y-8">
       <div>
         <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">
-          Live B2B Lead Harvester v22.0
+          Live B2B Lead Harvester v22.1
         </h1>
         <p className="text-slate-400 mt-1">
-          Scrape real physical businesses, working websites, phones, emails & social profiles.
+          Smart Geocoding & Guaranteed 30-Lead Real Business Extraction.
         </p>
       </div>
 
@@ -105,8 +113,8 @@ export default function ScraperPage() {
             <input
               type="text"
               value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="e.g. London, Dubai, New York"
+              onChange={handleCityChange}
+              placeholder="e.g. London, New York, Dubai"
               className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
               required
             />
@@ -141,7 +149,7 @@ export default function ScraperPage() {
 
         <div className="flex items-center justify-between pt-2">
           <div className="text-xs text-emerald-400 flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4" /> Multi-Source Pipeline: Google Places + Gemini Grounding + OpenStreetMap
+            <Sparkles className="w-4 h-4" /> Multi-Fallback Pipeline: Google Places + Gemini Grounding + OpenStreetMap
           </div>
 
           <button
@@ -237,11 +245,6 @@ export default function ScraperPage() {
                   {lead.socials?.facebook && (
                     <a href={lead.socials.facebook} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-blue-400">
                       <Facebook className="w-3.5 h-3.5" />
-                    </a>
-                  )}
-                  {lead.socials?.twitter && (
-                    <a href={lead.socials.twitter} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-sky-400">
-                      <Twitter className="w-3.5 h-3.5" />
                     </a>
                   )}
                   <span className="ml-auto text-[10px] text-slate-500 bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">
