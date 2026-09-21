@@ -1,3 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Plan {
+  FREE
+  PRO
+  AGENCY
+}
+
+enum Role {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  SENT
+  REPLIED
+  INTERESTED
+  NOT_INTERESTED
+  WON
+  LOST
+}
+
 model User {
   id                   String   @id @default(cuid())
   email                String   @unique
@@ -33,4 +65,132 @@ model User {
   activities      Activity[]
   scraperSearches ScraperSearch[]
   gmailAccounts   GmailAccount[]
+}
+
+model Lead {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String?
+  email     String?
+  company   String?
+  website   String?
+  phone     String?
+  address   String?
+  city      String?
+  country   String?
+  niche     String?
+  status    LeadStatus @default(NEW)
+  source    String?
+  notes     String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  emailsSent EmailSent[]
+  activities Activity[]
+}
+
+model Campaign {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  subject   String?
+  status    String   @default("draft")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  followups FollowupSequence[]
+}
+
+model FollowupSequence {
+  id         String   @id @default(cuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  dayNumber  Int
+  subject    String?
+  body       String?
+  createdAt  DateTime @default(now())
+}
+
+model Template {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  subject   String?
+  body      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EmailSent {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leadId    String?
+  lead      Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  recipient String
+  subject   String?
+  messageId String?
+  status    String    @default("SENT")
+  method    String    @default("smtp")
+  createdAt DateTime  @default(now())
+
+  activities Activity[]
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  dueDate     DateTime?
+  completed   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Activity {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leadId    String?
+  lead      Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  emailId   String?
+  email     EmailSent? @relation(fields: [emailId], references: [id], onDelete: SetNull)
+  type      String
+  detail    String?
+  createdAt DateTime  @default(now())
+}
+
+model ScraperSearch {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  query     String
+  results   Int      @default(0)
+  source    String?
+  createdAt DateTime @default(now())
+}
+
+model AdminLog {
+  id        String   @id @default(cuid())
+  action    String
+  detail    String?
+  adminId   String?
+  createdAt DateTime @default(now())
+}
+
+model GmailAccount {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email        String
+  accessToken  String?
+  refreshToken String?
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
