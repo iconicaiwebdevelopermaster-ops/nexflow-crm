@@ -1,6 +1,6 @@
 =================================================================
        NEXFLOW CRM v21.2 — MASTER AUDIT & REPAIR REPORT
-       Generated on: 9/21/2026, 10:27:12 AM
+       Generated on: 9/21/2026, 10:54:55 AM
        Project Root: D:\Own-Projects\NEXFLOW CRM
 =================================================================
 
@@ -49,29 +49,26 @@
   [OK] src/app/mrwoo/page.tsx
 
 --- Step 3: Running Prisma DB Push & Generate ---
-Prisma DB Push Error: Command failed: npx prisma db push --accept-data-loss
-Error: A datasource block is missing in the Prisma schema file.
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+Datasource "db": PostgreSQL database "neondb", schema "public" at "ep-aged-bread-axi7c860.c-4.us-east-2.aws.neon.tech"
+
+The database is already in sync with the Prisma schema.
+
+Running generate... (Use --skip-generate to skip the generators)
+[2K[1A[2K[GRunning generate... - Prisma Client
+[2K[1A[2K[G✔ Generated Prisma Client (v5.22.0) to .\node_modules\@prisma\client in 326ms
+
 
 Environment variables loaded from .env
 Prisma schema loaded from prisma\schema.prisma
 
+✔ Generated Prisma Client (v5.22.0) to .\node_modules\@prisma\client in 371ms
 
-Prisma Generate Error: Command failed: npx prisma generate
-Error: 
-You don't have any datasource defined in your schema.prisma.
-You can define a datasource like this:
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DB_URL")
-}
+Tip: Easily identify and fix slow SQL queries in your app. Optimize helps you enhance your visibility: https://pris.ly/--optimize
 
-More information in our documentation:
-https://pris.ly/d/prisma-schema
-
-
-Environment variables loaded from .env
-Prisma schema loaded from prisma\schema.prisma
 
 
 --- Step 4: Testing Next.js Build ---
