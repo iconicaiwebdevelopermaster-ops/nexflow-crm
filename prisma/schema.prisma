@@ -1,248 +1,36 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-enum UserRole {
-  USER
-  ADMIN
-  SUPER_ADMIN
-}
-
-enum LeadStatus {
-  NEW
-  QUEUED
-  SENT
-  CONTACTED
-  FOLLOWUP_1
-  FOLLOWUP_2
-  REPLIED
-  SKIPPED
-  BOUNCED
-  UNSUBSCRIBED
-  WON
-  LOST
-}
-
-enum EmailStatus {
-  QUEUED
-  SENT
-  DELIVERED
-  OPENED
-  REPLIED
-  BOUNCED
-  FAILED
-}
-
-enum ActivityType {
-  EMAIL_SENT
-  EMAIL_OPENED
-  EMAIL_REPLIED
-  STATUS_CHANGED
-  NOTE_ADDED
-  FOLLOWUP_SCHEDULED
-  STAGE_MOVED
-}
-
-enum CampaignStatus {
-  DRAFT
-  ACTIVE
-  PAUSED
-  COMPLETED
-}
-
 model User {
-  id               String          @id @default(cuid())
-  name             String?
-  email            String          @unique
-  password         String
-  role             UserRole        @default(USER)
-  lastLoginAt      DateTime?
-  smtpHost         String?
-  smtpPort         Int?
-  smtpUser         String?
-  smtpPass         String?
-  fromName         String?
-  promoteSite      String?
-  promoteTopic     String?
-  dailyLimit       Int?            @default(40)
-  mapsApiKey       String?
-  cseApiKey        String?
-  cseCx            String?
-  aiEnabled        Boolean?        @default(false)
-  aiProvider       String?         @default("deepseek")
-  aiModel          String?
-  deepseekApiKey   String?
-  openaiApiKey     String?
-  aiExtraPrompt    String?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  id                   String   @id @default(cuid())
+  email                String   @unique
+  name                 String?
+  password             String?
+  role                 Role     @default(USER)
+  plan                 Plan     @default(FREE)
+  fromName             String?
+  fromEmail            String?
+  promoteSite          String?
+  promoteTopic         String?
+  aiProvider           String?  @default("deepseek")
+  aiExtraPrompt        String?
+  deepseekApiKey       String?
+  openaiApiKey         String?
+  mapsApiKey           String?
+  cseApiKey            String?
+  cseCx                String?
+  smtpUser             String?
+  smtpPass             String?
+  dailyLimit           Int?     @default(40)
+  aiEnabled            Boolean? @default(true)
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  leads            Lead[]
-  campaigns        Campaign[]
-  templates        Template[]
-  tasks            Task[]
-  gmailAccounts    GmailAccount[]
-  scraperSearches  ScraperSearch[]
-  sentEmails       EmailSent[]
-
-  @@map("users")
-}
-
-model GmailAccount {
-  id           String    @id @default(cuid())
-  userId       String
-  email        String
-  accessToken  String
-  refreshToken String
-  expiryDate   BigInt?
-  dailyQuota   Int       @default(40)
-  sentToday    Int       @default(0)
-  isActive     Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("gmail_accounts")
-}
-
-model Lead {
-  id            String       @id @default(cuid())
-  userId        String
-  name          String
-  company       String
-  email         String
-  phone         String?
-  website       String?
-  city          String?
-  country       String?
-  niche         String?
-  status        LeadStatus   @default(NEW)
-  followupCount Int          @default(0)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  activities    Activity[]
-  tasks         Task[]
-  sentEmails    EmailSent[]
-
-  @@unique([userId, email])
-  @@map("leads")
-}
-
-model Campaign {
-  id            String         @id @default(cuid())
-  userId        String
-  name          String
-  template      String
-  status        CampaignStatus @default(DRAFT)
-  followupDelay Int            @default(4)
-  maxFollowups  Int            @default(2)
-  dailyLimit    Int            @default(40)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sentEmails    EmailSent[]
-
-  @@map("campaigns")
-}
-
-model Template {
-  id           String    @id @default(cuid())
-  userId       String
-  name         String
-  subject      String
-  body         String
-  templateType String    @default("INITIAL")
-  aiGenerated  Boolean   @default(false)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("templates")
-}
-
-model EmailSent {
-  id             String      @id @default(cuid())
-  userId         String
-  leadId         String?
-  campaignId     String?
-  recipientEmail String
-  subject        String
-  body           String
-  gmailThreadId  String?
-  gmailMessageId String?
-  status         EmailStatus @default(SENT)
-  isFollowup     Boolean     @default(false)
-  sentAt         DateTime    @default(now())
-  createdAt      DateTime    @default(now())
-
-  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lead           Lead?       @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  campaign       Campaign?   @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-
-  @@map("emails_sent")
-}
-
-model Task {
-  id        String   @id @default(cuid())
-  userId    String
-  leadId    String?
-  title     String
-  dueDate   DateTime?
-  completed Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lead      Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
-
-  @@map("tasks")
-}
-
-model Activity {
-  id        String       @id @default(cuid())
-  leadId    String
-  type      ActivityType
-  title     String
-  metadata  Json?
-  createdAt DateTime     @default(now())
-
-  lead      Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
-
-  @@map("activities")
-}
-
-model ScraperSearch {
-  id           String   @id @default(cuid())
-  userId       String
-  query        String
-  source       String
-  city         String?
-  niche        String?
-  resultsCount Int      @default(0)
-  createdAt    DateTime @default(now())
-
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("scraper_searches")
-}
-
-model AdminLog {
-  id        String   @id @default(cuid())
-  adminId   String
-  action    String
-  target    String?
-  details   Json?
-  createdAt DateTime @default(now())
-
-  @@map("admin_logs")
+  leads           Lead[]
+  campaigns       Campaign[]
+  templates       Template[]
+  emailsSent      EmailSent[]
+  tasks           Task[]
+  activities      Activity[]
+  scraperSearches ScraperSearch[]
+  gmailAccounts   GmailAccount[]
 }
