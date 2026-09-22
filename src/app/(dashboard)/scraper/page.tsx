@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { 
   Building2, MapPin, Mail, Phone, Globe, Linkedin, Facebook, 
-  Twitter, Instagram, Sparkles, Download, RefreshCw 
+  Sparkles, Download, AlertCircle 
 } from "lucide-react";
 
 export default function ScraperPage() {
@@ -16,19 +16,13 @@ export default function ScraperPage() {
   const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
   const [importing, setImporting] = useState(false);
   const [message, setMessage] = useState("");
-
-  const handleCityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setCity(val);
-    if (val.toLowerCase().includes("london")) setCountry("United Kingdom");
-    if (val.toLowerCase().includes("new york") || val.toLowerCase().includes("austin")) setCountry("USA");
-    if (val.toLowerCase().includes("dubai")) setCountry("UAE");
-  };
+  const [isError, setIsError] = useState(false);
 
   const handleHarvest = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage("");
+    setIsError(false);
     setLeads([]);
     setSelectedLeads([]);
 
@@ -42,22 +36,26 @@ export default function ScraperPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to harvest leads");
 
-      setLeads(data.leads || []);
-      setSelectedLeads((data.leads || []).map((_: any, idx: number) => idx));
-      setMessage(`Harvested ${data.leads?.length || 0} verified real leads for ${niche}!`);
+      const fetchedLeads = Array.isArray(data.leads) ? data.leads : [];
+      setLeads(fetchedLeads);
+      setSelectedLeads(fetchedLeads.map((_: any, idx: number) => idx));
+      setMessage(`Harvested ${fetchedLeads.length} real leads in ${city}, ${country}!`);
     } catch (err: any) {
-      setMessage(`Error: ${err.message}`);
+      setIsError(true);
+      setMessage(`Error: ${err.message || "Something went wrong"}`);
     } finally {
       setLoading(false);
     }
   };
 
   const handleImport = async () => {
-    if (selectedLeads.length === 0) return;
+    if (!selectedLeads || selectedLeads.length === 0) return;
     setImporting(true);
+    setMessage("");
+    setIsError(false);
 
     try {
-      const leadsToImport = selectedLeads.map((idx) => leads[idx]);
+      const leadsToImport = selectedLeads.map((idx) => leads[idx]).filter(Boolean);
       const res = await fetch("/api/scraper/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -67,9 +65,10 @@ export default function ScraperPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Import failed");
 
-      setMessage(`✓ ${data.importedCount || selectedLeads.length} Leads imported to CRM! (Skipped duplicates)`);
+      setMessage(`✓ ${data.importedCount || selectedLeads.length} Leads imported to CRM!`);
     } catch (err: any) {
-      setMessage(`Import Error: ${err.message}`);
+      setIsError(true);
+      setMessage(`Import Error: ${err.message || "Import failed"}`);
     } finally {
       setImporting(false);
     }
@@ -84,26 +83,26 @@ export default function ScraperPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 space-y-8">
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-10 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">
-          Live B2B Lead Harvester v22.1
+        <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">
+          Live B2B Lead Harvester v22.2
         </h1>
-        <p className="text-slate-400 mt-1">
-          Smart Geocoding & Guaranteed 30-Lead Real Business Extraction.
+        <p className="text-xs md:text-sm text-slate-400 mt-1">
+          Scrape real physical businesses, working websites, phones, emails & social profiles.
         </p>
       </div>
 
-      <form onSubmit={handleHarvest} className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <form onSubmit={handleHarvest} className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="text-xs font-semibold text-slate-400">Target Niche / Industry</label>
             <input
               type="text"
               value={niche}
               onChange={(e) => setNiche(e.target.value)}
-              placeholder="e.g. Software Houses, Dental Clinics"
-              className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
+              placeholder="e.g. Software Houses"
+              className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
               required
             />
           </div>
@@ -113,9 +112,9 @@ export default function ScraperPage() {
             <input
               type="text"
               value={city}
-              onChange={handleCityChange}
-              placeholder="e.g. London, New York, Dubai"
-              className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="e.g. London"
+              className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
               required
             />
           </div>
@@ -126,36 +125,35 @@ export default function ScraperPage() {
               type="text"
               value={country}
               onChange={(e) => setCountry(e.target.value)}
-              placeholder="e.g. United Kingdom, USA, UAE"
-              className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
+              placeholder="e.g. United Kingdom"
+              className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
               required
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-400">Harvest Depth (Count)</label>
+            <label className="text-xs font-semibold text-slate-400">Harvest Depth</label>
             <select
               value={limit}
               onChange={(e) => setLimit(Number(e.target.value))}
-              className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
+              className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
             >
               <option value={10}>10 Real Leads</option>
               <option value={30}>30 Real Leads</option>
               <option value={50}>50 Real Leads</option>
-              <option value={100}>100 Real Leads</option>
             </select>
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-2">
           <div className="text-xs text-emerald-400 flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4" /> Multi-Fallback Pipeline: Google Places + Gemini Grounding + OpenStreetMap
+            <Sparkles className="w-4 h-4 shrink-0" /> Multi-Source Pipeline: Google Places + Serper Web + Gemini AI
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-semibold text-sm px-6 py-3 rounded-xl transition-all shadow-lg shadow-cyan-500/10 flex items-center gap-2"
+            className="w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 disabled:opacity-50 text-white font-semibold text-sm px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-cyan-500/10 flex items-center justify-center gap-2"
           >
             {loading ? "Harvesting Real Data..." : `Harvest ${limit} Real Leads`}
           </button>
@@ -163,13 +161,18 @@ export default function ScraperPage() {
       </form>
 
       {message && (
-        <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl text-sm text-cyan-400 flex items-center justify-between">
-          <span>{message}</span>
-          {leads.length > 0 && (
+        <div className={`p-4 border rounded-xl text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+          isError ? "bg-rose-950/40 border-rose-800 text-rose-300" : "bg-slate-900 border-slate-800 text-cyan-400"
+        }`}>
+          <div className="flex items-center gap-2">
+            {isError && <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />}
+            <span>{message}</span>
+          </div>
+          {leads && leads.length > 0 && !isError && (
             <button
               onClick={handleImport}
               disabled={importing || selectedLeads.length === 0}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-2 rounded-lg text-xs flex items-center gap-1.5"
+              className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium px-4 py-2 rounded-lg text-xs flex items-center gap-1.5 self-end sm:self-auto shrink-0"
             >
               <Download className="w-3.5 h-3.5" />
               {importing ? "Importing..." : `Import Selected (${selectedLeads.length}) to CRM`}
@@ -178,9 +181,10 @@ export default function ScraperPage() {
         </div>
       )}
 
-      {leads.length > 0 && (
+      {Array.isArray(leads) && leads.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {leads.map((lead, idx) => {
+            if (!lead) return null;
             const isSelected = selectedLeads.includes(idx);
             return (
               <div
@@ -191,25 +195,25 @@ export default function ScraperPage() {
                 }`}
               >
                 <div className="flex items-start justify-between">
-                  <div className="space-y-1 pr-6">
-                    <h3 className="font-bold text-slate-100 text-base flex items-center gap-2">
+                  <div className="space-y-1 pr-4">
+                    <h3 className="font-bold text-slate-100 text-sm md:text-base flex items-center gap-2">
                       <Building2 className="w-4 h-4 text-cyan-400 shrink-0" />
-                      {lead.name}
+                      <span className="truncate">{lead.name || lead.company || "Business"}</span>
                     </h3>
-                    <p className="text-xs text-slate-400">{lead.niche}</p>
+                    <p className="text-xs text-slate-400 truncate">{lead.niche || niche}</p>
                   </div>
                   <input
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => {}}
-                    className="w-4 h-4 rounded text-cyan-500 focus:ring-0 bg-slate-950 border-slate-700"
+                    className="w-4 h-4 rounded text-cyan-500 focus:ring-0 bg-slate-950 border-slate-700 shrink-0"
                   />
                 </div>
 
                 <div className="space-y-1.5 text-xs text-slate-300 pt-2 border-t border-slate-800/60">
                   <div className="flex items-center gap-2 text-slate-400">
                     <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                    <span className="truncate">{lead.address}</span>
+                    <span className="truncate">{lead.address || `${city}, ${country}`}</span>
                   </div>
 
                   {lead.email && (
@@ -229,7 +233,7 @@ export default function ScraperPage() {
                   {lead.website && (
                     <div className="flex items-center gap-2 text-indigo-400 pt-1">
                       <Globe className="w-3.5 h-3.5 shrink-0" />
-                      <a href={lead.website} target="_blank" rel="noreferrer" className="hover:underline truncate">
+                      <a href={lead.website} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="hover:underline truncate">
                         {lead.website}
                       </a>
                     </div>
@@ -248,7 +252,7 @@ export default function ScraperPage() {
                     </a>
                   )}
                   <span className="ml-auto text-[10px] text-slate-500 bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">
-                    {lead.source}
+                    {lead.source || "Web Lead"}
                   </span>
                 </div>
               </div>
