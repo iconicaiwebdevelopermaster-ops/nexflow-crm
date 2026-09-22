@@ -1,10 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { 
-  Building2, MapPin, Mail, Phone, Globe, Linkedin, Facebook, 
-  Sparkles, Download, AlertCircle 
-} from "lucide-react";
+import { Building2, MapPin, Mail, Phone, Globe, Linkedin, Facebook, Sparkles, Download, AlertCircle } from "lucide-react";
 
 export default function ScraperPage() {
   const [niche, setNiche] = useState("Software Houses");
@@ -32,6 +29,11 @@ export default function ScraperPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ niche, city, country, limit }),
       });
+
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Server timeout or invalid response. Please try again.");
+      }
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to harvest leads");
@@ -86,10 +88,10 @@ export default function ScraperPage() {
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-10 space-y-6">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">
-          Live B2B Lead Harvester v22.2
+          Live B2B Lead Harvester v22.3
         </h1>
         <p className="text-xs md:text-sm text-slate-400 mt-1">
-          Scrape real physical businesses, working websites, phones, emails & social profiles.
+          Fast Parallel Business Scraping Engine (Sub-3s Response Time)
         </p>
       </div>
 
@@ -101,7 +103,6 @@ export default function ScraperPage() {
               type="text"
               value={niche}
               onChange={(e) => setNiche(e.target.value)}
-              placeholder="e.g. Software Houses"
               className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
               required
             />
@@ -113,7 +114,6 @@ export default function ScraperPage() {
               type="text"
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              placeholder="e.g. London"
               className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
               required
             />
@@ -125,7 +125,6 @@ export default function ScraperPage() {
               type="text"
               value={country}
               onChange={(e) => setCountry(e.target.value)}
-              placeholder="e.g. United Kingdom"
               className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
               required
             />
@@ -147,7 +146,7 @@ export default function ScraperPage() {
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-2">
           <div className="text-xs text-emerald-400 flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4 shrink-0" /> Multi-Source Pipeline: Google Places + Serper Web + Gemini AI
+            <Sparkles className="w-4 h-4 shrink-0" /> Ultra-Fast Parallel Search Engine
           </div>
 
           <button
@@ -166,7 +165,7 @@ export default function ScraperPage() {
         }`}>
           <div className="flex items-center gap-2">
             {isError && <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />}
-            <span>{message}</span>
+            <span>{String(message)}</span>
           </div>
           {leads && leads.length > 0 && !isError && (
             <button
@@ -198,9 +197,9 @@ export default function ScraperPage() {
                   <div className="space-y-1 pr-4">
                     <h3 className="font-bold text-slate-100 text-sm md:text-base flex items-center gap-2">
                       <Building2 className="w-4 h-4 text-cyan-400 shrink-0" />
-                      <span className="truncate">{lead.name || lead.company || "Business"}</span>
+                      <span className="truncate">{String(lead.name || "Business")}</span>
                     </h3>
-                    <p className="text-xs text-slate-400 truncate">{lead.niche || niche}</p>
+                    <p className="text-xs text-slate-400 truncate">{String(lead.niche || niche)}</p>
                   </div>
                   <input
                     type="checkbox"
@@ -213,28 +212,28 @@ export default function ScraperPage() {
                 <div className="space-y-1.5 text-xs text-slate-300 pt-2 border-t border-slate-800/60">
                   <div className="flex items-center gap-2 text-slate-400">
                     <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                    <span className="truncate">{lead.address || `${city}, ${country}`}</span>
+                    <span className="truncate">{String(lead.address || `${city}, ${country}`)}</span>
                   </div>
 
                   {lead.email && (
                     <div className="flex items-center gap-2 text-cyan-300">
                       <Mail className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                      <span className="truncate">{lead.email}</span>
+                      <span className="truncate">{String(lead.email)}</span>
                     </div>
                   )}
 
                   {lead.phone && (
                     <div className="flex items-center gap-2 text-slate-300">
                       <Phone className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                      <span>{lead.phone}</span>
+                      <span>{String(lead.phone)}</span>
                     </div>
                   )}
 
                   {lead.website && (
                     <div className="flex items-center gap-2 text-indigo-400 pt-1">
                       <Globe className="w-3.5 h-3.5 shrink-0" />
-                      <a href={lead.website} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="hover:underline truncate">
-                        {lead.website}
+                      <a href={String(lead.website)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="hover:underline truncate">
+                        {String(lead.website)}
                       </a>
                     </div>
                   )}
@@ -242,17 +241,17 @@ export default function ScraperPage() {
 
                 <div className="flex items-center gap-2 pt-2 border-t border-slate-800/60">
                   {lead.socials?.linkedin && (
-                    <a href={lead.socials.linkedin} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-cyan-400">
+                    <a href={String(lead.socials.linkedin)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-cyan-400">
                       <Linkedin className="w-3.5 h-3.5" />
                     </a>
                   )}
                   {lead.socials?.facebook && (
-                    <a href={lead.socials.facebook} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-blue-400">
+                    <a href={String(lead.socials.facebook)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-blue-400">
                       <Facebook className="w-3.5 h-3.5" />
                     </a>
                   )}
                   <span className="ml-auto text-[10px] text-slate-500 bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">
-                    {lead.source || "Web Lead"}
+                    {String(lead.source || "Web Lead")}
                   </span>
                 </div>
               </div>

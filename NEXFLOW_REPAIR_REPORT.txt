@@ -1,6 +1,6 @@
 =================================================================
        NEXFLOW CRM v21.2 — MASTER AUDIT & REPAIR REPORT
-       Generated on: 9/22/2026, 9:32:03 AM
+       Generated on: 9/22/2026, 9:42:06 AM
        Project Root: D:\Own-Projects\NEXFLOW CRM
 =================================================================
 
@@ -63,11 +63,11 @@ Running generate... (Use --skip-generate to skip the generators)
 Environment variables loaded from .env
 Prisma schema loaded from prisma\schema.prisma
 
-✔ Generated Prisma Client (v5.22.0) to .\node_modules\@prisma\client in 603ms
+✔ Generated Prisma Client (v5.22.0) to .\node_modules\@prisma\client in 464ms
 
 Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
 
-Tip: Want real-time updates to your database without manual polling? Discover how with Pulse: https://pris.ly/tip-0-pulse
+Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
 
 
 
@@ -132,7 +132,7 @@ Route (app)                              Size     First Load JS
 ├ ƒ /mrwoo/channels                      162 B          87.5 kB
 ├ ƒ /mrwoo/emails                        162 B          87.5 kB
 ├ ƒ /mrwoo/leads                         162 B          87.5 kB
-├ ƒ /mrwoo/logs                          162 B          87.5 kB
+├ ƒ /mrwoo/logs                          161 B          87.5 kB
 ├ ƒ /mrwoo/pipeline                      162 B          87.5 kB
 ├ ƒ /mrwoo/scrapes                       162 B          87.5 kB
 ├ ƒ /mrwoo/settings                      162 B          87.5 kB
