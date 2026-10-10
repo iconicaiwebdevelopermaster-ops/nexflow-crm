@@ -1,12 +1,16 @@
 "use client";
 
 import React, { useState } from "react";
-import { Building2, MapPin, Mail, Phone, Globe, Linkedin, Facebook, Sparkles, Download, AlertCircle } from "lucide-react";
+import { 
+  Building2, MapPin, Mail, Phone, Globe, Linkedin, Facebook, 
+  Sparkles, Download, AlertCircle, Search, ExternalLink, ShieldCheck 
+} from "lucide-react";
 
 export default function ScraperPage() {
   const [niche, setNiche] = useState("Software Houses");
   const [city, setCity] = useState("London");
   const [country, setCountry] = useState("United Kingdom");
+  const [channel, setChannel] = useState("linkedin");
   const [limit, setLimit] = useState(30);
   const [loading, setLoading] = useState(false);
   const [leads, setLeads] = useState<any[]>([]);
@@ -27,12 +31,12 @@ export default function ScraperPage() {
       const res = await fetch("/api/scraper/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ niche, city, country, limit }),
+        body: JSON.stringify({ niche, city, country, limit, channel }),
       });
 
       const contentType = res.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("Server timeout or invalid response. Please try again.");
+        throw new Error("Server response timeout. Please click Harvest again.");
       }
 
       const data = await res.json();
@@ -41,7 +45,7 @@ export default function ScraperPage() {
       const fetchedLeads = Array.isArray(data.leads) ? data.leads : [];
       setLeads(fetchedLeads);
       setSelectedLeads(fetchedLeads.map((_: any, idx: number) => idx));
-      setMessage(`Harvested ${fetchedLeads.length} real leads in ${city}, ${country}!`);
+      setMessage(`Harvested ${fetchedLeads.length} verified B2B leads in ${city}, ${country}!`);
     } catch (err: any) {
       setIsError(true);
       setMessage(`Error: ${err.message || "Something went wrong"}`);
@@ -67,7 +71,7 @@ export default function ScraperPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Import failed");
 
-      setMessage(`✓ ${data.importedCount || selectedLeads.length} Leads imported to CRM!`);
+      setMessage(`✓ ${data.importedCount || selectedLeads.length} Verified B2B Leads imported to CRM!`);
     } catch (err: any) {
       setIsError(true);
       setMessage(`Import Error: ${err.message || "Import failed"}`);
@@ -87,12 +91,60 @@ export default function ScraperPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-10 space-y-6">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">
-          Live B2B Lead Harvester v22.3
+        <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-cyan-400 via-sky-400 to-indigo-400 bg-clip-text text-transparent">
+          B2B Lead Harvester & LinkedIn X-Ray v23.0
         </h1>
         <p className="text-xs md:text-sm text-slate-400 mt-1">
-          Fast Parallel Business Scraping Engine (Sub-3s Response Time)
+          Scrape verified corporate companies, decision-makers, websites & active LinkedIn profiles.
         </p>
+      </div>
+
+      {/* Channel Source Selector */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <button
+          type="button"
+          onClick={() => setChannel("linkedin")}
+          className={`p-4 rounded-xl border text-left transition-all ${
+            channel === "linkedin"
+              ? "bg-cyan-950/40 border-cyan-500 shadow-lg shadow-cyan-500/10 text-cyan-300"
+              : "bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700"
+          }`}
+        >
+          <div className="flex items-center gap-2 font-semibold text-sm">
+            <Linkedin className="w-4 h-4 text-cyan-400" /> LinkedIn B2B X-Ray
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1">Corporate companies & LinkedIn entity matches</p>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setChannel("google")}
+          className={`p-4 rounded-xl border text-left transition-all ${
+            channel === "google"
+              ? "bg-cyan-950/40 border-cyan-500 shadow-lg shadow-cyan-500/10 text-cyan-300"
+              : "bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700"
+          }`}
+        >
+          <div className="flex items-center gap-2 font-semibold text-sm">
+            <Building2 className="w-4 h-4 text-indigo-400" /> Google Places Live
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1">Physical registered business addresses & phones</p>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setChannel("web")}
+          className={`p-4 rounded-xl border text-left transition-all ${
+            channel === "web"
+              ? "bg-cyan-950/40 border-cyan-500 shadow-lg shadow-cyan-500/10 text-cyan-300"
+              : "bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700"
+          }`}
+        >
+          <div className="flex items-center gap-2 font-semibold text-sm">
+            <Globe className="w-4 h-4 text-emerald-400" /> Web Harvester
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1">Enterprise B2B websites & AI verified index</p>
+        </button>
       </div>
 
       <form onSubmit={handleHarvest} className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4">
@@ -103,6 +155,7 @@ export default function ScraperPage() {
               type="text"
               value={niche}
               onChange={(e) => setNiche(e.target.value)}
+              placeholder="e.g. Software Houses"
               className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
               required
             />
@@ -114,6 +167,7 @@ export default function ScraperPage() {
               type="text"
               value={city}
               onChange={(e) => setCity(e.target.value)}
+              placeholder="e.g. London"
               className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
               required
             />
@@ -125,6 +179,7 @@ export default function ScraperPage() {
               type="text"
               value={country}
               onChange={(e) => setCountry(e.target.value)}
+              placeholder="e.g. United Kingdom"
               className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
               required
             />
@@ -137,16 +192,16 @@ export default function ScraperPage() {
               onChange={(e) => setLimit(Number(e.target.value))}
               className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
             >
-              <option value={10}>10 Real Leads</option>
-              <option value={30}>30 Real Leads</option>
-              <option value={50}>50 Real Leads</option>
+              <option value={10}>10 B2B Leads</option>
+              <option value={30}>30 B2B Leads</option>
+              <option value={50}>50 B2B Leads</option>
             </select>
           </div>
         </div>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-2">
-          <div className="text-xs text-emerald-400 flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4 shrink-0" /> Ultra-Fast Parallel Search Engine
+          <div className="text-xs text-cyan-400 flex items-center gap-1.5">
+            <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-400" /> Active Channel: {channel.toUpperCase()} X-Ray + AI Domain Extraction
           </div>
 
           <button
@@ -154,7 +209,7 @@ export default function ScraperPage() {
             disabled={loading}
             className="w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 disabled:opacity-50 text-white font-semibold text-sm px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-cyan-500/10 flex items-center justify-center gap-2"
           >
-            {loading ? "Harvesting Real Data..." : `Harvest ${limit} Real Leads`}
+            {loading ? "Extracting B2B Leads..." : `Harvest ${limit} B2B Leads`}
           </button>
         </div>
       </form>
@@ -197,7 +252,7 @@ export default function ScraperPage() {
                   <div className="space-y-1 pr-4">
                     <h3 className="font-bold text-slate-100 text-sm md:text-base flex items-center gap-2">
                       <Building2 className="w-4 h-4 text-cyan-400 shrink-0" />
-                      <span className="truncate">{String(lead.name || "Business")}</span>
+                      <span className="truncate">{String(lead.name || "Company")}</span>
                     </h3>
                     <p className="text-xs text-slate-400 truncate">{String(lead.niche || niche)}</p>
                   </div>
@@ -232,26 +287,31 @@ export default function ScraperPage() {
                   {lead.website && (
                     <div className="flex items-center gap-2 text-indigo-400 pt-1">
                       <Globe className="w-3.5 h-3.5 shrink-0" />
-                      <a href={String(lead.website)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="hover:underline truncate">
-                        {String(lead.website)}
+                      <a href={String(lead.website)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="hover:underline truncate flex items-center gap-1">
+                        {String(lead.website)} <ExternalLink className="w-3 h-3 text-slate-500" />
                       </a>
                     </div>
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 pt-2 border-t border-slate-800/60">
-                  {lead.socials?.linkedin && (
-                    <a href={String(lead.socials.linkedin)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-cyan-400">
-                      <Linkedin className="w-3.5 h-3.5" />
+                {/* Social Badges & LinkedIn Action Button */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-800/60">
+                  {lead.socials?.linkedin ? (
+                    <a
+                      href={String(lead.socials.linkedin)}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-800/50 rounded-lg text-xs text-cyan-300 font-medium transition-colors"
+                    >
+                      <Linkedin className="w-3.5 h-3.5 text-cyan-400" /> LinkedIn Profile
                     </a>
+                  ) : (
+                    <span className="text-[10px] text-slate-500">Corporate Lead</span>
                   )}
-                  {lead.socials?.facebook && (
-                    <a href={String(lead.socials.facebook)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-blue-400">
-                      <Facebook className="w-3.5 h-3.5" />
-                    </a>
-                  )}
-                  <span className="ml-auto text-[10px] text-slate-500 bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">
-                    {String(lead.source || "Web Lead")}
+
+                  <span className="text-[10px] text-slate-400 bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">
+                    {String(lead.source || "LinkedIn X-Ray")}
                   </span>
                 </div>
               </div>

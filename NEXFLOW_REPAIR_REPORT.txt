@@ -1,6 +1,6 @@
 =================================================================
        NEXFLOW CRM v21.2 — MASTER AUDIT & REPAIR REPORT
-       Generated on: 9/22/2026, 9:42:06 AM
+       Generated on: 10/10/2026, 8:59:14 AM
        Project Root: D:\Own-Projects\NEXFLOW CRM
 =================================================================
 
@@ -57,17 +57,17 @@ The database is already in sync with the Prisma schema.
 
 Running generate... (Use --skip-generate to skip the generators)
 [2K[1A[2K[GRunning generate... - Prisma Client
-[2K[1A[2K[G✔ Generated Prisma Client (v5.22.0) to .\node_modules\@prisma\client in 671ms
+[2K[1A[2K[G✔ Generated Prisma Client (v5.22.0) to .\node_modules\@prisma\client in 814ms
 
 
 Environment variables loaded from .env
 Prisma schema loaded from prisma\schema.prisma
 
-✔ Generated Prisma Client (v5.22.0) to .\node_modules\@prisma\client in 464ms
+✔ Generated Prisma Client (v5.22.0) to .\node_modules\@prisma\client in 821ms
 
 Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
 
-Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
+Tip: Want real-time updates to your database without manual polling? Discover how with Pulse: https://pris.ly/tip-0-pulse
 
 
 
@@ -129,20 +129,20 @@ Route (app)                              Size     First Load JS
 ├ ƒ /login                               2.25 kB         140 kB
 ├ ƒ /mrwoo                               190 B          96.8 kB
 ├ ƒ /mrwoo/analytics                     162 B          87.5 kB
-├ ƒ /mrwoo/channels                      162 B          87.5 kB
-├ ƒ /mrwoo/emails                        162 B          87.5 kB
+├ ƒ /mrwoo/channels                      161 B          87.5 kB
+├ ƒ /mrwoo/emails                        161 B          87.5 kB
 ├ ƒ /mrwoo/leads                         162 B          87.5 kB
-├ ƒ /mrwoo/logs                          161 B          87.5 kB
+├ ƒ /mrwoo/logs                          162 B          87.5 kB
 ├ ƒ /mrwoo/pipeline                      162 B          87.5 kB
 ├ ƒ /mrwoo/scrapes                       162 B          87.5 kB
 ├ ƒ /mrwoo/settings                      162 B          87.5 kB
 ├ ƒ /mrwoo/users                         838 B          88.2 kB
 ├ ƒ /onboarding                          2.47 kB          99 kB
-├ ƒ /scraper                             4.25 kB        91.6 kB
+├ ƒ /scraper                             4.67 kB          92 kB
 ├ ƒ /settings                            3.54 kB        90.9 kB
 ├ ƒ /signup                              2.38 kB         140 kB
 ├ ƒ /tasks                               3.69 kB        99.6 kB
-└ ƒ /templates                           162 B          87.5 kB
+└ ƒ /templates                           161 B          87.5 kB
 + First Load JS shared by all            87.3 kB
   ├ chunks/117-9a5aab9ebbb58fa9.js       31.7 kB
   ├ chunks/fd9d1056-aaf43ca2153ca2be.js  53.6 kB
