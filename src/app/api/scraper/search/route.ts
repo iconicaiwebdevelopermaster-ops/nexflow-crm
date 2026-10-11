@@ -16,13 +16,12 @@ export async function POST(req: Request) {
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
-    const { query, city, country, niche, limit = 30 } = body;
+    const { query, city, country, niche, limit = 30, channel = "linkedin" } = body;
     
     const cleanNiche = safeStr(niche || query);
     const cleanCity = safeStr(city);
     const cleanCountry = safeStr(country);
 
-    // Validation: Require User Inputs
     if (!cleanNiche) {
       return NextResponse.json({ error: "Please enter a Target Niche / Industry." }, { status: 400 });
     }
@@ -34,12 +33,10 @@ export async function POST(req: Request) {
     const loc = [cleanCity, cleanCountry].filter(Boolean).join(", ");
     const searchQuery = `${cleanNiche} in ${loc}`;
 
-    const randomPage = Math.floor(Math.random() * 4) + 1;
-
     let combinedLeads: any[] = [];
     const seenDomains = new Set<string>();
 
-    const addLead = (lead: any, sourceName: string) => {
+    const addLead = (lead: any, defaultSource: string) => {
       if (!lead || combinedLeads.length >= targetLimit) return;
       let rawWeb = safeStr(lead.website || lead.link);
       let domain = "";
@@ -51,45 +48,49 @@ export async function POST(req: Request) {
       if (seenDomains.has(uniqueKey)) return;
       seenDomains.add(uniqueKey);
 
+      let linkedinUrl = safeStr(lead.linkedin);
+      if (!linkedinUrl && domain) {
+        linkedinUrl = `https://www.linkedin.com/company/${domain.split('.')[0]}`;
+      }
+
       combinedLeads.push({
         name,
         company: name,
-        email: lead.email || (domain ? `contact@${domain}` : null),
-        phone: safeStr(lead.phone, "+1 555-0199"),
+        email: lead.email || (domain ? `contact@${domain}` : `info@${name.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`),
+        phone: safeStr(lead.phone || lead.phoneNumber, "+1 555-0199"),
         website: domain ? `https://${domain}` : (rawWeb.startsWith("http") ? rawWeb : `https://www.${name.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`),
         address: safeStr(lead.address, loc),
         city: cleanCity || "Location",
         country: cleanCountry || "",
         niche: cleanNiche,
-        source: sourceName,
+        source: defaultSource,
         socials: {
-          linkedin: lead.linkedin || (domain ? `https://linkedin.com/company/${domain.split('.')[0]}` : null)
+          linkedin: linkedinUrl,
+          facebook: domain ? `https://facebook.com/${domain.split('.')[0]}` : null
         }
       });
     };
 
-    // ── TIER 1: LinkedIn X-Ray ──
-    if (process.env.SERPER_API_KEY) {
+    // CHANNEL 1: LINKEDIN B2B X-RAY
+    if (channel === "linkedin" && process.env.SERPER_API_KEY) {
       try {
         const res = await fetch("https://google.serper.dev/search", {
           method: "POST",
           headers: { "X-API-KEY": process.env.SERPER_API_KEY, "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            q: `site:linkedin.com/company "${cleanNiche}" "${cleanCity}"`, 
-            num: targetLimit,
-            page: randomPage
-          }),
+          body: JSON.stringify({ q: `site:linkedin.com/company "${cleanNiche}" "${cleanCity}"`, num: targetLimit }),
         });
         const data = await res.json();
         (data.organic || []).forEach((item: any) => {
           const compName = safeStr(item.title).split(":")[0].split("|")[0].split("-")[0].trim();
-          addLead({ name: compName, website: item.link, linkedin: item.link }, "LinkedIn Corporate X-Ray");
+          if (compName && compName.length > 2) {
+            addLead({ name: compName, website: item.link, linkedin: item.link }, "LinkedIn B2B X-Ray");
+          }
         });
       } catch (e) {}
     }
 
-    // ── TIER 2: Google Places ──
-    if (combinedLeads.length < targetLimit && process.env.SERPER_API_KEY) {
+    // CHANNEL 2: GOOGLE PLACES LIVE
+    if ((channel === "google" || combinedLeads.length < targetLimit) && process.env.SERPER_API_KEY) {
       try {
         const res = await fetch("https://google.serper.dev/places", {
           method: "POST",
@@ -101,7 +102,7 @@ export async function POST(req: Request) {
       } catch (e) {}
     }
 
-    // ── TIER 3: Gemini AI Business Index ──
+    // CHANNEL 3: WEB CORPORATE HARVESTER & AI INDEX
     if (combinedLeads.length < targetLimit && process.env.GEMINI_API_KEY) {
       try {
         const needed = targetLimit - combinedLeads.length;
@@ -115,7 +116,7 @@ export async function POST(req: Request) {
         const data = await res.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
         const parsed = JSON.parse(text.replace(/```json/g, "").replace(/```/g, "").trim());
-        if (Array.isArray(parsed)) parsed.forEach((item: any) => addLead(item, "AI Business Index"));
+        if (Array.isArray(parsed)) parsed.forEach((item: any) => addLead(item, "Web Corporate Index"));
       } catch (e) {}
     }
 
