@@ -1,6 +1,6 @@
 =================================================================
        NEXFLOW CRM v21.2 — MASTER AUDIT & REPAIR REPORT
-       Generated on: 10/11/2026, 9:25:15 AM
+       Generated on: 10/11/2026, 9:44:30 AM
        Project Root: D:\Own-Projects\NEXFLOW CRM
 =================================================================
 
@@ -49,29 +49,6 @@
   [OK] src/app/mrwoo/page.tsx
 
 --- Step 3: Running Prisma DB Push & Generate ---
-Environment variables loaded from .env
-Prisma schema loaded from prisma\schema.prisma
-Datasource "db": PostgreSQL database "neondb", schema "public" at "ep-aged-bread-axi7c860.c-4.us-east-2.aws.neon.tech"
-
-The database is already in sync with the Prisma schema.
-
-Running generate... (Use --skip-generate to skip the generators)
-[2K[1A[2K[GRunning generate... - Prisma Client
-[2K[1A[2K[G✔ Generated Prisma Client (v5.22.0) to .\node_modules\@prisma\client in 881ms
-
-
-Environment variables loaded from .env
-Prisma schema loaded from prisma\schema.prisma
-
-✔ Generated Prisma Client (v5.22.0) to .\node_modules\@prisma\client in 811ms
-
-Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
-
-Tip: Need your database queries to be 1000x faster? Accelerate offers you that and more: https://pris.ly/tip-2-accelerate
-
-
-
---- Step 4: Testing Next.js Build ---
   ▲ Next.js 14.2.35
   - Environments: .env.local, .env
 
@@ -130,8 +107,8 @@ Route (app)                              Size     First Load JS
 ├ ƒ /mrwoo                               190 B          96.8 kB
 ├ ƒ /mrwoo/analytics                     162 B          87.5 kB
 ├ ƒ /mrwoo/channels                      162 B          87.5 kB
-├ ƒ /mrwoo/emails                        161 B          87.5 kB
-├ ƒ /mrwoo/leads                         160 B          87.5 kB
+├ ƒ /mrwoo/emails                        162 B          87.5 kB
+├ ƒ /mrwoo/leads                         162 B          87.5 kB
 ├ ƒ /mrwoo/logs                          162 B          87.5 kB
 ├ ƒ /mrwoo/pipeline                      162 B          87.5 kB
 ├ ƒ /mrwoo/scrapes                       162 B          87.5 kB
@@ -142,7 +119,7 @@ Route (app)                              Size     First Load JS
 ├ ƒ /settings                            3.54 kB        90.9 kB
 ├ ƒ /signup                              2.38 kB         140 kB
 ├ ƒ /tasks                               3.69 kB        99.6 kB
-└ ƒ /templates                           161 B          87.5 kB
+└ ƒ /templates                           162 B          87.5 kB
 + First Load JS shared by all            87.3 kB
   ├ chunks/117-9a5aab9ebbb58fa9.js       31.7 kB
   ├ chunks/fd9d1056-aaf43ca2153ca2be.js  53.6 kB

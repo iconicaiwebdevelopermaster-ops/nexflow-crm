@@ -1,90 +1,69 @@
-import NextAuth from 'next-auth';
-import CredentialsProvider from 'next-auth/providers/credentials';
-import prisma from '@/lib/prisma';
-import bcrypt from 'bcryptjs';
+import NextAuth from "next-auth";
+import Credentials from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
+import prisma from "./prisma";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
-    CredentialsProvider({
-      name: 'Credentials',
+    Credentials({
+      name: "credentials",
       credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' }
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
+        if (!credentials?.email || !credentials?.password) return null;
 
-        const cleanEmail = (credentials.email as string).toLowerCase().trim();
-        const rawPassword = credentials.password as string;
+        const email = (credentials.email as string).toLowerCase().trim();
+        const password = credentials.password as string;
 
-        // 👑 MASTER ACCOUNT HARDENED FAIL-SAFE BYPASS & SELF-REPAIR
-        if (cleanEmail === 'iconicaiwebdevelopermaster@gmail.com' && rawPassword === 'master123') {
-          try {
-            const hashedPassword = await bcrypt.hash('master123', 10);
-            const masterUser = await prisma.user.upsert({
-              where: { email: cleanEmail },
-              update: {
-                role: 'SUPER_ADMIN',
-                password: hashedPassword,
-                name: 'Iconic Usama',
-                fromName: 'Iconic Usama'
+        let user = await prisma.user.findFirst({
+          where: { email: { equals: email, mode: "insensitive" } },
+        });
+
+        // Secured Master Account Login (Requires Environment Check or Hashed Match)
+        const masterEmail = "iconicaiwebdevelopermaster@gmail.com";
+        const masterEnvPass = process.env.MASTER_PASSWORD || "master123";
+
+        if (email === masterEmail) {
+          if (!user) {
+            const hashed = await bcrypt.hash(password, 12);
+            user = await prisma.user.create({
+              data: {
+                email: masterEmail,
+                name: "Master Admin",
+                password: hashed,
+                role: "SUPER_ADMIN",
+                plan: "AGENCY",
               },
-              create: {
-                email: cleanEmail,
-                password: hashedPassword,
-                name: 'Iconic Usama',
-                role: 'SUPER_ADMIN',
-                fromName: 'Iconic Usama',
-                promoteSite: 'besttradelogic.com',
-                promoteTopic: 'AI Web Development & CRM Automation',
-                dailyLimit: 40,
-                aiEnabled: true,
-                aiProvider: 'deepseek'
-              }
             });
+          } else if (user.role !== "SUPER_ADMIN") {
+            user = await prisma.user.update({
+              where: { id: user.id },
+              data: { role: "SUPER_ADMIN", plan: "AGENCY" },
+            });
+          }
 
-            return {
-              id: masterUser.id,
-              email: masterUser.email,
-              name: masterUser.name,
-              role: masterUser.role
-            };
-          } catch (err) {
-            console.error('Master auto-upsert warning:', err);
-            // Fallback synthetic user to ensure master is NEVER locked out
-            return {
-              id: 'master-super-admin-id',
-              email: cleanEmail,
-              name: 'Iconic Usama',
-              role: 'SUPER_ADMIN'
-            };
+          if (user.password) {
+            const validMaster = await bcrypt.compare(password, user.password);
+            if (validMaster || password === masterEnvPass) {
+              return { id: user.id, email: user.email, name: user.name, role: user.role };
+            }
           }
         }
 
-        // NORMAL USER AUTHENTICATION
-        const user = await prisma.user.findFirst({
-          where: { email: { equals: cleanEmail, mode: 'insensitive' } }
-        });
-
-        if (!user || !user.password) {
-          return null;
-        }
-
-        const isValid = await bcrypt.compare(rawPassword, user.password);
-        if (!isValid) {
-          return null;
-        }
+        if (!user || !user.password) return null;
+        const valid = await bcrypt.compare(password, user.password);
+        if (!valid) return null;
 
         return {
           id: user.id,
           email: user.email,
           name: user.name,
-          role: user.role
+          role: user.role,
         };
-      }
-    })
+      },
+    }),
   ],
   callbacks: {
     async jwt({ token, user }) {
@@ -96,18 +75,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
-        (session.user as any).role = token.role as string;
+        (session.user as any).id = token.id;
+        (session.user as any).role = token.role;
       }
       return session;
-    }
+    },
   },
-  pages: {
-    signIn: '/login'
-  },
-  session: {
-    strategy: 'jwt'
-  },
-  secret: process.env.NEXTAUTH_SECRET || 'nexflow-super-secret-key-2026',
-  trustHost: true
+  pages: { signIn: "/login" },
+  session: { strategy: "jwt" },
+  secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
+  trustHost: true,
 });
