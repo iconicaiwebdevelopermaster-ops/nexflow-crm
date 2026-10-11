@@ -1,12 +1,1 @@
-{
-  "crons": [
-    {
-      "path": "/api/cron/followup?secret=nexflow-cron-secret-2026",
-      "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/cron/reply-check?secret=nexflow-cron-secret-2026",
-      "schedule": "0 */6 * * *"
-    }
-  ]
-}
+{"crons":[{"path":"/api/cron/followups","schedule":"0 9 * * *"}]}
