@@ -28,11 +28,9 @@ const DEFAULT_TEMPLATES = [
 
 export default async function TemplatesPage() {
   let userTemplates: any[] = [];
-  
   try {
     const session = await getServerSession();
     const userId = (session?.user as any)?.id;
-    
     if (userId) {
       userTemplates = await prisma.template.findMany({
         where: { userId: userId },
