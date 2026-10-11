@@ -174,7 +174,7 @@ export default function ScraperPage() {
         </p>
       </div>
 
-      {/* RESTORED TOP CHANNEL SELECTION CARDS */}
+      {/* TOP CHANNEL SELECTION CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <button
           type="button"
