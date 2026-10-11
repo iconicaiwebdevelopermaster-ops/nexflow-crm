@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 
-// Inline Native SVG Icons (Zero External Dependency - Never Crashes)
 const IconBuilding = () => (
   <svg className="w-4 h-4 text-cyan-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
     <rect x="4" y="2" width="16" height="20" rx="2" ry="2"/>
@@ -64,10 +63,10 @@ const IconExternalLink = () => (
 
 export default function ScraperPage() {
   const [mounted, setMounted] = useState(false);
-  const [niche, setNiche] = useState("Software Houses");
-  const [city, setCity] = useState("London");
-  const [country, setCountry] = useState("United Kingdom");
-  const [channel, setChannel] = useState("linkedin");
+  // CLEAN INITIAL STATES - NO HARDCODED VALUES
+  const [niche, setNiche] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("");
   const [limit, setLimit] = useState(30);
   const [loading, setLoading] = useState(false);
   const [leads, setLeads] = useState<any[]>([]);
@@ -76,7 +75,6 @@ export default function ScraperPage() {
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
 
-  // Prevent SSR/Client Hydration Exception
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -101,12 +99,12 @@ export default function ScraperPage() {
       const res = await fetch("/api/scraper/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ niche, city, country, limit, channel }),
+        body: JSON.stringify({ niche, city, country, limit }),
       });
 
       const contentType = res.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("Server timeout or invalid response. Please try again.");
+        throw new Error("Server response timeout. Please try again.");
       }
 
       const data = await res.json();
@@ -115,7 +113,7 @@ export default function ScraperPage() {
       const fetchedLeads = Array.isArray(data.leads) ? data.leads : [];
       setLeads(fetchedLeads);
       setSelectedLeads(fetchedLeads.map((_: any, idx: number) => idx));
-      setMessage(`Harvested ${fetchedLeads.length} verified B2B leads in ${city}, ${country}!`);
+      setMessage(`Harvested ${fetchedLeads.length} verified B2B leads for "${niche}" in ${city || country || 'specified location'}!`);
     } catch (err: any) {
       setIsError(true);
       setMessage(`Error: ${err.message || "Something went wrong"}`);
@@ -162,97 +160,48 @@ export default function ScraperPage() {
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-10 space-y-6">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-cyan-400 via-sky-400 to-indigo-400 bg-clip-text text-transparent">
-          B2B Lead Harvester & LinkedIn X-Ray v23.2
+          Global B2B Lead Harvester v23.4
         </h1>
         <p className="text-xs md:text-sm text-slate-400 mt-1">
-          Scrape verified corporate companies, decision-makers, websites & active LinkedIn profiles.
+          Search any niche or location worldwide for verified corporate companies & LinkedIn decision-makers.
         </p>
       </div>
 
-      {/* Channel Source Selector */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <button
-          type="button"
-          onClick={() => setChannel("linkedin")}
-          className={`p-4 rounded-xl border text-left transition-all ${
-            channel === "linkedin"
-              ? "bg-cyan-950/40 border-cyan-500 shadow-lg shadow-cyan-500/10 text-cyan-300"
-              : "bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700"
-          }`}
-        >
-          <div className="flex items-center gap-2 font-semibold text-sm">
-            <IconLinkedin /> LinkedIn B2B X-Ray
-          </div>
-          <p className="text-[11px] text-slate-400 mt-1">Corporate companies & LinkedIn entity matches</p>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setChannel("google")}
-          className={`p-4 rounded-xl border text-left transition-all ${
-            channel === "google"
-              ? "bg-cyan-950/40 border-cyan-500 shadow-lg shadow-cyan-500/10 text-cyan-300"
-              : "bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700"
-          }`}
-        >
-          <div className="flex items-center gap-2 font-semibold text-sm">
-            <IconBuilding /> Google Places Live
-          </div>
-          <p className="text-[11px] text-slate-400 mt-1">Physical registered business addresses & phones</p>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setChannel("web")}
-          className={`p-4 rounded-xl border text-left transition-all ${
-            channel === "web"
-              ? "bg-cyan-950/40 border-cyan-500 shadow-lg shadow-cyan-500/10 text-cyan-300"
-              : "bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700"
-          }`}
-        >
-          <div className="flex items-center gap-2 font-semibold text-sm">
-            <IconGlobe /> Web Harvester
-          </div>
-          <p className="text-[11px] text-slate-400 mt-1">Enterprise B2B websites & AI verified index</p>
-        </button>
-      </div>
-
-      {/* Form Controls */}
+      {/* Form Controls - Blank Clean Inputs with Placeholders */}
       <form onSubmit={handleHarvest} className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
-            <label className="text-xs font-semibold text-slate-400">Target Niche / Industry</label>
+            <label className="text-xs font-semibold text-slate-400">Target Niche / Industry <span className="text-cyan-400">*</span></label>
             <input
               type="text"
               value={niche}
               onChange={(e) => setNiche(e.target.value)}
-              placeholder="e.g. Software Houses"
-              className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
+              placeholder="e.g. Real Estate, Software Houses, Dentists"
+              className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500"
               required
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-400">City / Region</label>
+            <label className="text-xs font-semibold text-slate-400">City / Region <span className="text-cyan-400">*</span></label>
             <input
               type="text"
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              placeholder="e.g. London"
-              className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
+              placeholder="e.g. Dubai, London, New York"
+              className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500"
               required
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-400">Country</label>
+            <label className="text-xs font-semibold text-slate-400">Country (Optional)</label>
             <input
               type="text"
               value={country}
               onChange={(e) => setCountry(e.target.value)}
-              placeholder="e.g. United Kingdom"
-              className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
-              required
+              placeholder="e.g. UAE, United Kingdom, USA"
+              className="mt-1.5 w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500"
             />
           </div>
 
@@ -272,7 +221,7 @@ export default function ScraperPage() {
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-2">
           <div className="text-xs text-cyan-400 flex items-center gap-1.5">
-            <IconSparkles /> Active Channel: {channel.toUpperCase()} X-Ray + AI Domain Extraction
+            <IconSparkles /> Multi-Source Harvester: LinkedIn X-Ray + Google Places + AI Search
           </div>
 
           <button
@@ -280,12 +229,12 @@ export default function ScraperPage() {
             disabled={loading}
             className="w-full sm:w-auto bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 disabled:opacity-50 text-white font-semibold text-sm px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-cyan-500/10 flex items-center justify-center gap-2"
           >
-            {loading ? "Extracting B2B Leads..." : `Harvest ${limit} B2B Leads`}
+            {loading ? "Harvesting B2B Leads..." : `Harvest ${limit} Leads`}
           </button>
         </div>
       </form>
 
-      {/* Messages */}
+      {/* Message State */}
       {message && (
         <div className={`p-4 border rounded-xl text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
           isError ? "bg-rose-950/40 border-rose-800 text-rose-300" : "bg-slate-900 border-slate-800 text-cyan-400"
@@ -304,7 +253,7 @@ export default function ScraperPage() {
         </div>
       )}
 
-      {/* Cards List */}
+      {/* Results Grid */}
       {Array.isArray(leads) && leads.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {leads.map((lead, idx) => {
@@ -380,7 +329,7 @@ export default function ScraperPage() {
                   )}
 
                   <span className="text-[10px] text-slate-400 bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">
-                    {String(lead.source || "LinkedIn X-Ray")}
+                    {String(lead.source || "B2B Harvester")}
                   </span>
                 </div>
               </div>
