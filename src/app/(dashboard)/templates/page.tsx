@@ -1,17 +1,17 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from "react";
 import Link from "next/link";
 
-interface Template {
+interface TemplateItem {
   id: string;
   name: string;
   subject: string;
   body: string;
-  category: "Cold Outreach" | "Follow Up" | "Pitch" | "Demo";
+  category: "Cold Outreach" | "Follow Up" | "Pitch";
 }
 
-const TEMPLATES: Template[] = [
+const TEMPLATES: TemplateItem[] = [
   {
     id: "tpl-1",
     name: "Cold Outreach - Quick Question",
@@ -32,20 +32,13 @@ const TEMPLATES: Template[] = [
     subject: "Exclusive preview for {{company}}",
     body: "Hi {{firstName}},\n\nI prepared a short 2-minute video walkthrough showing how NexFlow harvests validated leads and drafts personalized emails in seconds.\n\nShould I send the demo link over?\n\nBest,\n{{yourName}}",
     category: "Pitch"
-  },
-  {
-    id: "tpl-4",
-    name: "Breakup / Final Attempt",
-    subject: "Permission to close your file, {{firstName}}?",
-    body: "Hi {{firstName}},\n\nI have reached out a couple of times but haven't heard back, so I assume this is not a priority for {{company}} right now.\n\nIf anything changes in the future, feel free to reach back out.\n\nBest regards,\n{{yourName}}",
-    category: "Follow Up"
   }
 ];
 
 export default function TemplatesPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const copyTemplate = (template: Template) => {
+  const copyTemplate = (template: TemplateItem) => {
     navigator.clipboard.writeText(`Subject: ${template.subject}\n\n${template.body}`);
     setCopiedId(template.id);
     setTimeout(() => setCopiedId(null), 2000);
@@ -53,7 +46,6 @@ export default function TemplatesPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6 mb-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-2">
@@ -71,7 +63,6 @@ export default function TemplatesPage() {
         </Link>
       </div>
 
-      {/* Templates Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {TEMPLATES.map(template => (
           <div
@@ -91,9 +82,7 @@ export default function TemplatesPage() {
                 </button>
               </div>
 
-              <h3 className="font-semibold text-lg text-white mb-2">
-                {template.name}
-              </h3>
+              <h3 className="font-semibold text-lg text-white mb-2">{template.name}</h3>
               <p className="text-xs text-slate-400 font-mono mb-3 bg-slate-950 p-2.5 rounded border border-slate-800">
                 <strong className="text-slate-300">Subject:</strong> {template.subject}
               </p>
