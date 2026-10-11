@@ -7,7 +7,6 @@ export const dynamic = "force-dynamic";
 function safeStr(val: any, fallback: string = ""): string {
   if (val === null || val === undefined) return fallback;
   if (typeof val === "string") return val;
-  if (typeof val === "object") return val.display_name || val.name || fallback;
   return String(val);
 }
 
@@ -17,179 +16,107 @@ export async function POST(req: Request) {
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
-    const { query, city = "London", country = "United Kingdom", niche = "Software Houses", limit = 30, channel = "linkedin" } = body;
+    const { city = "London", country = "UK", niche = "Software Houses", limit = 30 } = body;
+    
     const targetLimit = Math.min(parseInt(String(limit), 10) || 30, 50);
-    const cleanNiche = safeStr(niche || query, "Software Houses");
-    const cleanCity = safeStr(city, "London");
-    const cleanCountry = safeStr(country, "United Kingdom");
-    const loc = `${cleanCity}, ${cleanCountry}`;
+    const loc = `${city}, ${country}`;
+
+    // 🔄 RANDOMIZATION ENGINE: Change query variations to get fresh results
+    const variations = [
+      `${niche} in ${loc}`,
+      `top rated ${niche} companies in ${loc}`,
+      `emerging ${niche} agencies ${loc}`,
+      `best ${niche} firms ${loc}`,
+      `corporate ${niche} entities in ${city}`
+    ];
+    const randomQuery = variations[Math.floor(Math.random() * variations.length)];
+    
+    // 📄 RANDOM OFFSET: Skip first few results to avoid same old data
+    const randomPage = Math.floor(Math.random() * 5) + 1; // Page 1 to 5
 
     let combinedLeads: any[] = [];
     const seenDomains = new Set<string>();
 
     const addLead = (lead: any) => {
       if (!lead || combinedLeads.length >= targetLimit) return;
-
       let rawWeb = safeStr(lead.website || lead.link);
       let domain = "";
-      try {
-        if (rawWeb && rawWeb.startsWith("http")) {
-          domain = new URL(rawWeb).hostname.replace("www.", "");
-        }
-      } catch (e) {}
+      try { if (rawWeb.startsWith("http")) domain = new URL(rawWeb).hostname.replace("www.", ""); } catch (e) {}
 
-      // Deduplicate by Domain or Name
-      const name = safeStr(lead.name || lead.company, cleanNiche);
+      const name = safeStr(lead.name || lead.company, "Business");
       const uniqueKey = domain || name.toLowerCase();
 
       if (seenDomains.has(uniqueKey)) return;
       seenDomains.add(uniqueKey);
 
-      let linkedinUrl = safeStr(lead.linkedin);
-      if (!linkedinUrl && domain) {
-        linkedinUrl = `https://www.linkedin.com/company/${domain.split('.')[0]}`;
-      } else if (!linkedinUrl) {
-        linkedinUrl = `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(name)}`;
-      }
-
       combinedLeads.push({
         name,
         company: name,
-        email: lead.email || (domain ? `contact@${domain}` : `sales@${name.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`),
+        email: lead.email || (domain ? `contact@${domain}` : null),
         phone: safeStr(lead.phone, "+44 20 7946 0912"),
         website: domain ? `https://${domain}` : (rawWeb.startsWith("http") ? rawWeb : `https://www.${name.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`),
         address: safeStr(lead.address, loc),
-        city: cleanCity,
-        country: cleanCountry,
-        niche: cleanNiche,
-        source: safeStr(lead.source, "LinkedIn B2B X-Ray"),
+        city, country, niche,
+        source: lead.source || "Deep Search",
         socials: {
-          linkedin: linkedinUrl,
-          facebook: domain ? `https://facebook.com/${domain.split('.')[0]}` : null,
+          linkedin: lead.linkedin || (domain ? `https://linkedin.com/company/${domain.split('.')[0]}` : null)
         }
       });
     };
 
-    // ── TIER 1: SERPER LINKEDIN X-RAY SEARCH ──
+    // ── TIER 1: LinkedIn X-Ray with Random Offset ──
     if (process.env.SERPER_API_KEY) {
       try {
-        const xRayQuery = `site:linkedin.com/company "${cleanNiche}" "${cleanCity}" "${cleanCountry}"`;
         const res = await fetch("https://google.serper.dev/search", {
           method: "POST",
           headers: { "X-API-KEY": process.env.SERPER_API_KEY, "Content-Type": "application/json" },
-          body: JSON.stringify({ q: xRayQuery, num: targetLimit }),
-          signal: AbortSignal.timeout(3500),
+          body: JSON.stringify({ 
+            q: `site:linkedin.com/company "${niche}" "${city}"`, 
+            num: targetLimit,
+            page: randomPage // 👈 Randomizes results every time
+          }),
         });
-
-        if (res.ok) {
-          const data = await res.json();
-          (data.organic || []).forEach((item: any) => {
-            const rawTitle = safeStr(item.title);
-            // Title format: "Company Name: Overview | LinkedIn"
-            const compName = rawTitle.split(":")[0]?.split("|")[0]?.split("-")[0]?.trim();
-            const link = safeStr(item.link);
-            const snippet = safeStr(item.snippet);
-
-            if (compName && compName.length > 2 && !compName.toLowerCase().includes("top") && !compName.toLowerCase().includes("best")) {
-              const guessedDomain = compName.toLowerCase().replace(/[^a-z0-9]/g, "") + ".com";
-              addLead({
-                name: compName,
-                company: compName,
-                website: `https://www.${guessedDomain}`,
-                linkedin: link,
-                address: snippet.includes(cleanCity) ? `${cleanCity}, ${cleanCountry}` : loc,
-                source: "LinkedIn Corporate X-Ray"
-              });
-            }
-          });
-        }
+        const data = await res.json();
+        (data.organic || []).forEach((item: any) => {
+          const compName = safeStr(item.title).split(":")[0].split("|")[0].split("-")[0].trim();
+          addLead({ name: compName, website: item.link, linkedin: item.link, source: "LinkedIn X-Ray" });
+        });
       } catch (e) {}
     }
 
-    // ── TIER 2: SERPER GOOGLE PLACES ──
+    // ── TIER 2: Google Places with Variant Query ──
     if (combinedLeads.length < targetLimit && process.env.SERPER_API_KEY) {
       try {
         const res = await fetch("https://google.serper.dev/places", {
           method: "POST",
           headers: { "X-API-KEY": process.env.SERPER_API_KEY, "Content-Type": "application/json" },
-          body: JSON.stringify({ q: `${cleanNiche} in ${loc}`, num: targetLimit }),
-          signal: AbortSignal.timeout(3000),
+          body: JSON.stringify({ q: randomQuery, num: targetLimit }),
         });
-        if (res.ok) {
-          const data = await res.json();
-          (data.places || []).forEach((p: any) => {
-            if (p.website || p.title) {
-              addLead({
-                name: p.title || p.name,
-                company: p.title,
-                website: p.website || p.link,
-                phone: p.phoneNumber || p.phone,
-                address: p.address || loc,
-                source: "Google Verified Business"
-              });
-            }
-          });
-        }
+        const data = await res.json();
+        (data.places || []).forEach((p: any) => addLead({ ...p, source: "Google Places" }));
       } catch (e) {}
     }
 
-    // ── TIER 3: GEMINI REAL B2B ENRICHMENT ENGINE ──
+    // ── TIER 3: Gemini AI - Explicitly ask for UNIQUE results ──
     if (combinedLeads.length < targetLimit && process.env.GEMINI_API_KEY) {
       try {
         const needed = targetLimit - combinedLeads.length;
-        const geminiPrompt = `Return a JSON array of ${needed} REAL, established ${cleanNiche} companies operating in ${loc}.
-Format strictly as JSON array:
-[
-  {
-    "name": "Exact Company Name",
-    "website": "https://www.realwebsite.com",
-    "linkedin": "https://www.linkedin.com/company/realcompany",
-    "address": "Real City Address",
-    "email": "contact@realwebsite.com",
-    "phone": "+44 20 7946 0912"
-  }
-]
-ONLY return JSON array. No markdown.`;
-
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: geminiPrompt }] }],
-            generationConfig: { temperature: 0.1, maxOutputTokens: 3000 }
+            contents: [{ parts: [{ text: `Return ${needed} REAL and UNIQUE ${niche} companies in ${loc} that are NOT in the top 5 results of Google. Return JSON array: [{"name":"Name","website":"https://domain.com","address":"Address"}]` }] }]
           }),
-          signal: AbortSignal.timeout(4000),
         });
-
-        if (res.ok) {
-          const data = await res.json();
-          const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
-          const cleaned = text.replace(/```json/g, "").replace(/```/g, "").trim();
-          const parsed = JSON.parse(cleaned);
-          if (Array.isArray(parsed)) {
-            parsed.forEach((item: any) => addLead({ ...item, source: "B2B AI Verified Index" }));
-          }
-        }
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+        const parsed = JSON.parse(text.replace(/```json/g, "").replace(/```/g, "").trim());
+        if (Array.isArray(parsed)) parsed.forEach((item: any) => addLead({ ...item, source: "AI Unique Index" }));
       } catch (e) {}
     }
 
-    const finalLeads = combinedLeads.slice(0, targetLimit);
-
-    await prisma.scraperSearch.create({
-      data: {
-        userId: session.user.id,
-        query: `${cleanNiche} in ${loc} (${channel})`,
-        results: finalLeads.length,
-        source: "v23.0 B2B Engine",
-      },
-    }).catch(() => {});
-
-    return NextResponse.json({
-      success: true,
-      leads: finalLeads,
-      count: finalLeads.length,
-    });
+    return NextResponse.json({ success: true, leads: combinedLeads.slice(0, targetLimit), count: combinedLeads.length });
   } catch (error: any) {
-    return NextResponse.json({ error: safeStr(error.message, "Search failed") }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
