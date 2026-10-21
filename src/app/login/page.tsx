@@ -33,7 +33,7 @@ function LoginForm() {
         router.refresh();
       }
     } catch {
-      setError("Something went wrong. Try again.");
+      setError("Something went wrong.");
       setLoading(false);
     }
   };
@@ -45,16 +45,13 @@ function LoginForm() {
           <h1 className="text-3xl font-bold text-white">NexFlow CRM</h1>
           <p className="text-sm text-slate-400 mt-1">B2B Lead Generation Platform</p>
         </div>
-
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl">
           <h2 className="text-lg font-semibold text-white mb-5">Sign In</h2>
-
           {error && (
             <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
               {error}
             </div>
           )}
-
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs text-slate-400 mb-1">Email</label>
