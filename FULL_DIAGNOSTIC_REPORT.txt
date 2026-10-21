@@ -1,0 +1,80 @@
+=================================================================
+ NEXFLOW CRM - FULL SYSTEM DIAGNOSTIC REPORT
+ Generated: 2026-10-21 17:21:18
+=================================================================
+
+--- SECTION 1: PROJECT STRUCTURE ---
+[PASS] package.json exists
+[FAIL] next.config.js MISSING
+[PASS] tailwind.config.ts exists
+[PASS] tsconfig.json exists
+[PASS] prisma/schema.prisma exists
+[PASS] vercel.json exists
+[PASS] Next.js config found
+
+--- SECTION 2: APP ROUTES ---
+[PASS] Login Page (src/app/login/page.tsx)
+[PASS] Scraper/Harvester (src/app/(dashboard)/scraper/page.tsx)
+[PASS] Templates (src/app/(dashboard)/templates/page.tsx)
+[PASS] Tasks (src/app/(dashboard)/tasks/page.tsx)
+[PASS] Settings (src/app/(dashboard)/settings/page.tsx)
+[PASS] AI Composer (src/app/(dashboard)/compose/page.tsx)
+[FAIL] Auth API MISSING (src/app/api/auth/[...nextauth]/route.ts)
+[PASS] Scraper API (src/app/api/scraper/search/route.ts)
+
+--- SECTION 3: SSR CRASH SCAN ---
+[PASS] No SSR crash patterns found in client components
+[PASS] Suspense boundary found with useSearchParams: page.tsx
+
+--- SECTION 4: AUTH CONFIG ---
+[INFO] next-auth version: 5.0.0-beta.32
+[PASS] NextAuth v5 config (src/auth.ts) with handlers export
+
+--- SECTION 5: MIDDLEWARE ---
+[PASS] Middleware file found: src/middleware.ts
+[PASS] Login route referenced in middleware
+[PASS] Dashboard protection active
+[PASS] Auth API excluded from protection
+[PASS] Token validation present
+
+--- SECTION 6: DATABASE ---
+[PASS] Prisma model: User
+[PASS] Prisma model: Lead
+[PASS] Prisma model: Template
+[PASS] Prisma model: Task
+[PASS] Prisma model: EmailLog
+[PASS] Datasource configured
+[PASS] Neon PostgreSQL connection successful
+
+--- SECTION 7: ENV VARIABLES ---
+[PASS] DATABASE_URL configured
+[PASS] NEXTAUTH_SECRET configured
+[PASS] NEXTAUTH_URL configured
+[WARN] DEEPSEEK_API_KEY not set (optional)
+[WARN] ENCRYPTION_KEY not set (optional)
+[WARN] CRON_SECRET not set (optional)
+
+--- SECTION 8: VERCEL CONFIG ---
+[PASS] vercel.json is valid JSON
+[INFO] Cron: 0 9 * * * -> /api/cron/followups
+[PASS] Cron schedule is Hobby-compliant
+
+--- SECTION 9: HARVESTER ---
+[PASS] MX Email Verification integrated
+[PASS] DuckDuckGo X-Ray scraper present
+[PASS] Timeout protection configured
+[PASS] Email verifier utility found: src/lib/email-verifier.ts
+
+--- SECTION 10: BUILD TEST ---
+[PASS] Next.js build PASSED
+
+=================================================================
+ FINAL RESULTS
+=================================================================
+ PASSED:   38
+ FAILED:   2
+ WARNINGS: 3
+ TOTAL:    43 checks
+
+ VERDICT: MINOR ISSUES - Fix 2 items before production
+=================================================================
